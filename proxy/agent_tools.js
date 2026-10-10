@@ -115,6 +115,10 @@ const ToolSchemas = {
     budget: z.number().positive().optional(),
   }),
 
+  searchInternet: z.object({
+    query: z.string().min(1).max(200),
+  }),
+
   // Client actions
   openInMaps: z.object({
     placeId: z.string().optional(),
@@ -243,6 +247,17 @@ const GEMINI_FUNCTION_DECLARATIONS = [
       required: ['origin', 'destination'],
     },
   },
+  {
+    name: 'searchInternet',
+    description: 'Searches the live internet for up-to-date travel facts, attractions, local food recommendations, opening hours, current events, and live information.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        query: { type: 'STRING', description: 'The search query to look up on the live internet' },
+      },
+      required: ['query'],
+    },
+  },
   // Client Action Declarations
   {
     name: 'openInMaps',
@@ -293,6 +308,7 @@ const SERVER_RUN_TOOLS = new Set([
   'getScamRadar',
   'getPlaybook',
   'createRoadmapSummary',
+  'searchInternet',
 ]);
 
 const CLIENT_ACTION_TOOLS = new Set([
@@ -490,6 +506,78 @@ function executeCreateRoadmapSummary(args) {
   };
 }
 
+async function executeSearchInternet(args) {
+  const query = (args.query || '').trim();
+  if (!query) {
+    return { query: '', source: 'Internet', error: 'No query provided' };
+  }
+
+  const results = [];
+  const cleanQuery = encodeURIComponent(query);
+
+  // 1. DuckDuckGo HTML web search
+  try {
+    const ddgRes = await fetch(`https://html.duckduckgo.com/html/?q=${cleanQuery}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)',
+      },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (ddgRes.ok) {
+      const html = await ddgRes.text();
+      const regex = /<a class="result__snippet[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+      let match;
+      while ((match = regex.exec(html)) !== null && results.length < 5) {
+        const text = match[1]
+          .replace(/<[^>]+>/g, '')
+          .replace(/&quot;/g, '"')
+          .replace(/&#x27;/g, "'")
+          .replace(/&amp;/g, '&')
+          .trim();
+        if (text && text.length > 15) {
+          results.push({
+            snippet: wrapDataBlock(text.slice(0, 260)),
+            source: 'Web',
+          });
+        }
+      }
+    }
+  } catch (_) {}
+
+  // 2. Wikipedia quick summary if relevant
+  try {
+    const wikiKey = encodeURIComponent(query.replace(/\s+/g, '_'));
+    const wikiRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${wikiKey}`, {
+      headers: { 'User-Agent': 'TravelBuddyApp/1.0 (travelbuddy)' },
+      signal: AbortSignal.timeout(2000),
+    });
+    if (wikiRes.ok) {
+      const wData = await wikiRes.json();
+      if (wData.extract) {
+        results.unshift({
+          title: wData.title || query,
+          snippet: wrapDataBlock(wData.extract.slice(0, 300)),
+          source: 'Wikipedia',
+        });
+      }
+    }
+  } catch (_) {}
+
+  if (results.length === 0) {
+    return {
+      query,
+      source: 'Internet',
+      message: 'No external web snippets found. Answering based on verified knowledge.',
+    };
+  }
+
+  return {
+    query,
+    source: 'Internet',
+    webResults: results,
+  };
+}
+
 /**
  * Executes a server tool and returns the response for Gemini.
  */
@@ -509,6 +597,9 @@ async function executeServerTool(toolName, rawArgs) {
   const args = parseResult.data;
 
   switch (toolName) {
+    case 'searchInternet':
+      return await executeSearchInternet(args);
+
     case 'checkPrice':
       return executeCheckPrice(args);
 
