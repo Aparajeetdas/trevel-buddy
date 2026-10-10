@@ -1,0 +1,12 @@
+{
+  "name": "trevel-buddy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Travel Buddy - AI Travel Companion",
+  "scripts": {
+    "test": "node proxy/test_security.js && node proxy/test_ai_safety.js && node proxy/test_agent_ag1.js && node proxy/test_agent_ag3.js"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
+}

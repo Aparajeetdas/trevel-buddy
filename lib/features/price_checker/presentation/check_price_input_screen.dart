@@ -10,6 +10,7 @@ import '../../../../core/services/google_maps_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/pricing_engine.dart';
 import '../../../../core/widgets/app_brand_app_bar.dart';
+import '../../../../core/widgets/ask_buddy_floating_button.dart';
 import 'price_check_result_screen.dart';
 import 'widgets/airport_destination_picker.dart';
 import 'widgets/price_input_adaptive_fields.dart';
@@ -233,6 +234,7 @@ class _CheckPriceInputScreenState extends ConsumerState<CheckPriceInputScreen> {
         title: 'Check a Price Before You Pay',
         showBackButton: true,
       ),
+      floatingActionButton: const AskBuddyFloatingButton(place: 'Guwahati'),
       body: _isLoading
           ? const Center(
               child: Column(

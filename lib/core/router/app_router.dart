@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/airport_fares/presentation/airport_prepaid_fares_screen.dart';
+import '../../features/ask_buddy/presentation/ask_buddy_sheet.dart';
 import '../../features/business/presentation/business_onboarding_screen.dart';
 import '../../features/business/presentation/business_profile_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -181,6 +182,16 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? 'biz_1';
         return BusinessProfileScreen(businessId: id);
+      },
+    ),
+    GoRoute(
+      parentNavigatorKey: _rootNavigatorKey,
+      path: '/agent',
+      builder: (context, state) {
+        final prompt = state.extra is String ? state.extra as String : null;
+        return Scaffold(
+          body: AskBuddySheet(initialPrompt: prompt, currentPlace: 'Guwahati'),
+        );
       },
     ),
   ],

@@ -170,7 +170,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text('AI explanations can make mistakes. Check the factors shown.'),
+        find.textContaining('can make mistakes. Check the factors shown.'),
         findsOneWidget,
       );
     });

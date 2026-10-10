@@ -271,6 +271,7 @@ class AgentMessage {
   final String text;
   final DateTime timestamp;
   final List<AgentAction> actions;
+  final List<String> sources;
 
   const AgentMessage({
     required this.id,
@@ -278,7 +279,26 @@ class AgentMessage {
     required this.text,
     required this.timestamp,
     this.actions = const [],
+    this.sources = const [],
   });
+
+  AgentMessage copyWith({
+    String? id,
+    String? sender,
+    String? text,
+    DateTime? timestamp,
+    List<AgentAction>? actions,
+    List<String>? sources,
+  }) {
+    return AgentMessage(
+      id: id ?? this.id,
+      sender: sender ?? this.sender,
+      text: text ?? this.text,
+      timestamp: timestamp ?? this.timestamp,
+      actions: actions ?? this.actions,
+      sources: sources ?? this.sources,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -286,16 +306,22 @@ class AgentMessage {
     'text': text,
     'timestamp': timestamp.toIso8601String(),
     'actions': actions.map((a) => a.toJson()).toList(),
+    'sources': sources,
   };
 
   factory AgentMessage.fromJson(Map<String, dynamic> json) => AgentMessage(
-    id: json['id'] as String,
-    sender: json['sender'] as String,
-    text: json['text'] as String,
-    timestamp: DateTime.parse(json['timestamp'] as String),
-    actions:
-        (json['actions'] as List<dynamic>?)
+    id: json['id'] as String? ?? 'msg_${DateTime.now().millisecondsSinceEpoch}',
+    sender: json['sender'] as String? ?? 'buddy',
+    text: (json['text'] ?? json['reply']) as String? ?? '',
+    timestamp: json['timestamp'] != null
+        ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
+        : DateTime.now(),
+    actions: (json['actions'] as List<dynamic>?)
             ?.map((a) => AgentAction.fromJson(a as Map<String, dynamic>))
+            .toList() ??
+        [],
+    sources: (json['sources'] as List<dynamic>?)
+            ?.map((s) => s.toString())
             .toList() ??
         [],
   );

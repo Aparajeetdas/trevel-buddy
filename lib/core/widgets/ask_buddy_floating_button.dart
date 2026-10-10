@@ -7,8 +7,14 @@ import '../theme/app_theme.dart';
 class AskBuddyFloatingButton extends StatelessWidget {
   final String? place;
   final String? initialPrompt;
+  final String? screen;
 
-  const AskBuddyFloatingButton({super.key, this.place, this.initialPrompt});
+  const AskBuddyFloatingButton({
+    super.key,
+    this.place,
+    this.initialPrompt,
+    this.screen,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -16,8 +22,9 @@ class AskBuddyFloatingButton extends StatelessWidget {
       heroTag: 'ask_buddy_fab',
       onPressed: () => AskBuddySheet.show(
         context,
-        place: place ?? 'Jaipur',
+        place: place ?? 'Guwahati',
         initialPrompt: initialPrompt,
+        screen: screen ?? 'home',
       ),
       backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,

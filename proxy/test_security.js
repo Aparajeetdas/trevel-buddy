@@ -207,7 +207,23 @@ async function runSecurityTests() {
   console.log(`\nAll ${passed} Phase Sec1 security tests passed successfully!`);
 }
 
-runSecurityTests().catch((err) => {
-  console.error('Test failed with error:', err);
-  process.exit(1);
-});
+(async () => {
+  const { handler } = require('./server');
+  const srv = http.createServer(handler);
+  await new Promise((resolve, reject) => {
+    srv.listen(8080, '127.0.0.1', resolve).on('error', (err) => {
+      if (err.code === 'EADDRINUSE') resolve(); // already listening
+      else reject(err);
+    });
+  });
+
+  try {
+    await runSecurityTests();
+    srv.close();
+    process.exit(0);
+  } catch (err) {
+    srv.close();
+    console.error('Test failed with error:', err);
+    process.exit(1);
+  }
+})();

@@ -16,6 +16,7 @@ import '../../../core/utils/engine_math.dart';
 import '../../../core/widgets/app_brand_app_bar.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_places_search_bar.dart';
+import '../../../core/widgets/ask_buddy_floating_button.dart';
 import '../../roadmap/presentation/roadmap_screen.dart';
 import 'widgets/location_details_sheet.dart';
 
@@ -211,6 +212,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
     return Scaffold(
       appBar: const AppBrandAppBar(title: 'Explore & Google Maps'),
+      floatingActionButton: const AskBuddyFloatingButton(place: 'Guwahati'),
       body: CustomScrollView(
         slivers: [
           // ==========================================

@@ -290,26 +290,75 @@ Follow this step-by-step walkthrough to test all features:
 
 ---
 
-## 🧪 Testing & Validation
+---
 
-Run the test suite:
+## 🤖 Ask Buddy Gemini 1.5 Agent Setup & Architecture (Phase AG)
+
+Travel Buddy integrates **Ask Buddy**, an autonomous AI Travel Guide and Fair Price Guardian powered by the official Google Gen AI REST API / SDK, running **strictly on the secure server-side proxy** (`proxy/server.js`).
+
+### 1. Security & Configuration Invariants
+* **Zero Client Exposure**: The browser and mobile clients **never** receive `GEMINI_API_KEY`. All Gemini calls route through `POST /api/agent`.
+* **Environment Validation**: Validated at proxy startup using **Zod** in [`proxy/env.js`](proxy/env.js).
+  * `GEMINI_API_KEY`: Google AI Studio / Gemini API key.
+  * `GEMINI_MODEL`: Model identifier (defaults to `gemini-1.5-flash`).
+  * `PORT`: Server port (defaults to `8080`).
+* **Health Check Endpoint (`GET /health`)**:
+  * Exposes `hasGeminiKey: boolean` and `hasGeminiModel: boolean` as booleans **only** (present or missing).
+  * Exposes `securityMetrics: { promptInjectionAttempts }` counter.
+  * Never leaks secret keys or model paths in health responses or logs.
+
+### 2. Route Specifications (`POST /api/agent` & `POST /agent`)
+* **Firebase Authentication (HTTP 401)**: Requires a valid Firebase Bearer token (`Authorization: Bearer <token>`). Unauthenticated requests are rejected immediately.
+* **Per-User Quota (HTTP 429)**: Capped at **30 requests per day per user** with `Retry-After` header.
+* **Per-IP Rate Limit (HTTP 429)**: Capped at **10 requests per minute per client IP** with `Retry-After` header.
+* **Body Schema (Zod)**:
+  * `messages`: Array of up to 12 items (`role`: `'user' | 'model'`, `text`: up to 1000 characters, trimmed and sanitized).
+  * `context`: `{ screen, placeId?, activeCityId, lat?, lng? }` (coordinates rounded to 2 decimal places).
+  * Maximum payload size: strictly capped at **8 KB**.
+
+### 3. Server-Side Agent Loop & Safety Architecture
+* **System Prompt Invariant**: Buddy grounds every price in tool results with tags: `[Official tariff]`, `[Community]`, `[Estimate]`, `[Google]`, or `[Playbook]`. Never invents tariffs, phone numbers, or opening hours. Shows `112` first if the user feels unsafe.
+* **Multi-Turn Tool Calling**: Gemini runs with temperature `0.3` and function declarations. Allowed up to **4 rounds ceiling** before forcing a final textual answer.
+* **8s Upstream & 20s Total Timeout**: Strict timeouts prevent hung requests.
+* **Server Tools (Executed)**: `checkPrice`, `getAirportPrepaidFare`, `getPlaceDetails`, `searchNearby`, `getRouteEstimate`, `getScamRadar`, `getPlaybook`, `createRoadmapSummary`.
+* **Client Action Tools (Never Executed on Server)**: `openInMaps`, `openDirections`, and `openScreen` are strictly validated on the server into structured **Action Cards** (`{ type, label, params }`). The client app constructs URLs, and the user must tap to act.
+* **Prompt Injection Defense**: Untrusted text is wrapped inside `<data>` blocks and stripped of HTML/URLs. Adversarial phrases (`ignore previous instructions`, `reveal system prompt`) are intercepted, incrementing a security counter only without logging prompt text, and answered with a safe refusal card.
+
+### 4. Client Experience & Failure Resilience
+* **Responsive Chat UI**: Opens as a bottom sheet on mobile (`<768px`) and a docked side panel on desktop/tablet (`>=768px`).
+* **Suggestion Chips**: Preset chips for quick guidance:
+  * `"Is Rs 1200 fair from the airport to Ganeshguri?"`
+  * `"Scams near me"`
+  * `"Plan how to reach Shillong"`
+  * `"Best time to visit"`
+* **Safety Disclaimer**: Persistent note under input: *"AI can make mistakes. Check the factors shown."*
+* **In-Memory History**: Chat history remains in-memory only, cleared on close or via the header **Reset Chat** button.
+* **Sign-In Gate with Resume**: Signed-out users see a Google sign-in modal; upon sign-in, the pending message is dispatched automatically without losing input.
+* **Non-Blocking Fallback**: If Gemini fails, times out, or returns 429, Ask Buddy displays a friendly message and a button to open **Check a Price**. The app is never blocked.
+
+### 5. Running the Proxy & Tests
+
+**Start the Hardened Proxy Server:**
 ```bash
+node proxy/server.js
+```
+
+**Run Backend Agent Verification Tests:**
+```bash
+# Phase AG1 & AG3 integration suites
+node proxy/test_agent_ag1.js
+node proxy/test_agent_ag3.js
+```
+
+**Run Flutter Client Tests:**
+```bash
+# Phase AG2 UI and Phase AG3 failure handling suites
+flutter test test/phase_ag2_agent_ui_test.dart
+flutter test test/phase_ag3_failure_and_quota_test.dart
+
+# Run entire Flutter test suite
 flutter test
 ```
-**Results**:
-* `29/29` unit tests passing across pricing engine calculations, outlier trimming, scoring overrides, Gemini proxy models, and Google routes models.
-* `flutter analyze` reports **0 issues** across the entire workspace.
-
----
-
-## 💻 Tech Stack
-* **Client**: Flutter 3.x (Web, iOS, Android)
-* **Architecture**: Riverpod + Clean Repository Pattern
-* **Maps**: Flutter Map (OpenStreetMap) + Google Places (New) & Routes API
-* **AI Engine**: Google Gemini 1.5 Flash via Node.js Serverless Proxy
-* **Styling**: Tailored Material 3 Design System (strictly modular, all UI files <300 lines)
-
----
 
 ---
 

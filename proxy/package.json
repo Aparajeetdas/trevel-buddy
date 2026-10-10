@@ -7,8 +7,15 @@
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
-  "keywords": ["travel-buddy", "gemini", "proxy", "ai-price-intelligence"],
+  "keywords": [
+    "travel-buddy",
+    "gemini",
+    "proxy",
+    "ai-price-intelligence"
+  ],
   "author": "Travel Buddy Team",
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
 }

@@ -94,24 +94,62 @@ class GeminiProxyService {
   Future<AgentMessage> sendAgentMessage({
     required List<AgentMessage> history,
     String? currentPlace,
+    String? screen,
+    String? placeId,
     double? lat,
     double? lng,
+    String? idToken,
   }) async {
     final payload = {
-      'messages': history.map((m) => m.toJson()).toList(),
-      'currentPlace': currentPlace ?? 'Jaipur',
-      'currentCoordinates': {'lat': lat ?? 26.9239, 'lng': lng ?? 75.8267},
+      'messages': history.map((m) => {
+        'role': m.sender == 'user' ? 'user' : 'model',
+        'text': m.text,
+      }).toList(),
+      'context': {
+        'screen': screen ?? 'home',
+        'placeId': ?placeId,
+        'activeCityId': currentPlace ?? 'Guwahati',
+        'lat': ?lat,
+        'lng': ?lng,
+      },
+    };
+
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      if (idToken != null && idToken.isNotEmpty)
+        'Authorization': 'Bearer $idToken',
     };
 
     try {
-      final uri = Uri.parse('$_proxyBaseUrl/agent');
-      final response = await _client
-          .post(
-            uri,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 8));
+      // Try /api/agent first, fall back to /agent
+      Uri uri = Uri.parse('$_proxyBaseUrl/api/agent');
+      http.Response response = await _client
+          .post(uri, headers: headers, body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 12));
+
+      if (response.statusCode == 404) {
+        uri = Uri.parse('$_proxyBaseUrl/agent');
+        response = await _client
+            .post(uri, headers: headers, body: jsonEncode(payload))
+            .timeout(const Duration(seconds: 12));
+      }
+
+      if (response.statusCode == 429) {
+        return AgentMessage(
+          id: 'agent_${DateTime.now().millisecondsSinceEpoch}',
+          sender: 'buddy',
+          text: 'You have reached the request limit or daily quota for Ask Buddy. In the meantime, you can check fair taxi fares directly.',
+          timestamp: DateTime.now(),
+          sources: const ['Playbook'],
+          actions: const [
+            AgentAction(
+              type: 'check_price',
+              label: 'Check a Price',
+              params: {},
+            ),
+          ],
+        );
+      }
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -120,13 +158,18 @@ class GeminiProxyService {
         for (final item in rawActions) {
           if (item is Map<String, dynamic>) {
             final type = item['type'] as String? ?? '';
-            if (_allowedToolTypes.contains(type)) {
+            if (_allowedToolTypes.contains(type) || type.isNotEmpty) {
               actions.add(AgentAction.fromJson(item));
             }
           }
         }
 
-        final rawText = data['text'] as String?;
+        final rawSources = (data['sources'] as List<dynamic>?)
+                ?.map((s) => s.toString())
+                .toList() ??
+            [];
+
+        final rawText = (data['reply'] ?? data['text']) as String?;
         if (rawText != null && rawText.trim().isNotEmpty) {
           return AgentMessage(
             id: 'agent_${DateTime.now().millisecondsSinceEpoch}',
@@ -134,6 +177,7 @@ class GeminiProxyService {
             text: rawText,
             timestamp: DateTime.now(),
             actions: actions,
+            sources: rawSources,
           );
         }
       }
@@ -141,7 +185,113 @@ class GeminiProxyService {
       // Fallback to local intelligent agent
     }
 
-    return _generateLocalAgentFallback(history, currentPlace ?? 'Jaipur');
+    return _generateLocalAgentFallback(history, currentPlace ?? 'Guwahati');
+  }
+
+  /// Streams agent response tokens using Server-Sent Events (SSE)
+  Stream<String> streamAgentMessage({
+    required List<AgentMessage> history,
+    String? currentPlace,
+    String? screen,
+    String? placeId,
+    double? lat,
+    double? lng,
+    String? idToken,
+    void Function(AgentMessage finalMessage)? onComplete,
+  }) async* {
+    final payload = {
+      'messages': history.map((m) => {
+        'role': m.sender == 'user' ? 'user' : 'model',
+        'text': m.text,
+      }).toList(),
+      'context': {
+        'screen': screen ?? 'home',
+        'placeId': ?placeId,
+        'activeCityId': currentPlace ?? 'Guwahati',
+        'lat': ?lat,
+        'lng': ?lng,
+      },
+    };
+
+    final uri = Uri.parse('$_proxyBaseUrl/api/agent?stream=true');
+    final request = http.Request('POST', uri);
+    request.headers['Content-Type'] = 'application/json';
+    request.headers['Accept'] = 'text/event-stream';
+    if (idToken != null && idToken.isNotEmpty) {
+      request.headers['Authorization'] = 'Bearer $idToken';
+    }
+    request.body = jsonEncode(payload);
+
+    try {
+      final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 15));
+      if (streamedResponse.statusCode == 200) {
+        final buffer = StringBuffer();
+        final rawActions = <AgentAction>[];
+        final sources = <String>[];
+
+        await for (final chunk in streamedResponse.stream.transform(utf8.decoder)) {
+          final lines = chunk.split('\n');
+          for (final line in lines) {
+            final trimmed = line.trim();
+            if (trimmed.startsWith('data:')) {
+              final jsonStr = trimmed.substring(5).trim();
+              if (jsonStr.isNotEmpty) {
+                try {
+                  final data = jsonDecode(jsonStr);
+                  if (data is Map<String, dynamic>) {
+                    if (data.containsKey('token')) {
+                      final token = data['token'] as String;
+                      buffer.write(token);
+                      yield token;
+                    } else if (data.containsKey('reply') || data.containsKey('text')) {
+                      if (data['actions'] is List) {
+                        for (final a in data['actions']) {
+                          if (a is Map<String, dynamic>) {
+                            rawActions.add(AgentAction.fromJson(a));
+                          }
+                        }
+                      }
+                      if (data['sources'] is List) {
+                        for (final s in data['sources']) {
+                          sources.add(s.toString());
+                        }
+                      }
+                    }
+                  }
+                } catch (_) {}
+              }
+            }
+          }
+        }
+
+        if (buffer.isNotEmpty) {
+          final finalMsg = AgentMessage(
+            id: 'agent_${DateTime.now().millisecondsSinceEpoch}',
+            sender: 'buddy',
+            text: buffer.toString().trim(),
+            timestamp: DateTime.now(),
+            actions: rawActions,
+            sources: sources,
+          );
+          onComplete?.call(finalMsg);
+          return;
+        }
+      }
+    } catch (_) {
+      // Stream error -> proceed to non-streaming fallback
+    }
+
+    final fallbackMsg = await sendAgentMessage(
+      history: history,
+      currentPlace: currentPlace,
+      screen: screen,
+      placeId: placeId,
+      lat: lat,
+      lng: lng,
+      idToken: idToken,
+    );
+    yield fallbackMsg.text;
+    onComplete?.call(fallbackMsg);
   }
 
   AiExplanationResult _generateLocalFallback(
