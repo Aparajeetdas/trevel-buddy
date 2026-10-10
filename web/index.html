@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#0D9488">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleapis.com https://*.google.com https://*.gstatic.com; connect-src 'self' http://localhost:8080 http://127.0.0.1:8080 https://*.googleapis.com https://*.firebaseio.com; object-src 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com https://www.gstatic.com https://*.gstatic.com https://apis.google.com https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://*.gstatic.com data:; img-src 'self' data: blob: https://*.googleapis.com https://*.google.com https://*.gstatic.com https://*.googleusercontent.com; connect-src 'self' http://localhost:8080 http://127.0.0.1:8080 https://*.googleapis.com https://*.firebaseio.com https://www.gstatic.com https://*.gstatic.com https://*.firebaseapp.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self' blob:; frame-src 'self' https://*.firebaseapp.com https://accounts.google.com; object-src 'none';">
 
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
@@ -36,6 +36,7 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       padding: 0;
@@ -54,6 +55,9 @@
       justify-content: center;
       gap: 16px;
       color: #F8FAFC;
+      text-align: center;
+      padding: 24px;
+      z-index: 9998;
     }
     .logo-container {
       width: 72px;
@@ -90,6 +94,56 @@
       animation: spin 1s linear infinite;
       margin-top: 8px;
     }
+    #watchdog-box {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-top: 16px;
+      padding: 16px;
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 12px;
+      max-width: 320px;
+    }
+    .watchdog-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #F8FAFC;
+    }
+    .watchdog-desc {
+      font-size: 12px;
+      color: #94A3B8;
+      line-height: 1.4;
+    }
+    .watchdog-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .watchdog-btn {
+      padding: 8px 14px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s ease;
+    }
+    .btn-reload {
+      background: #0D9488;
+      color: #FFFFFF;
+    }
+    .btn-reload:hover {
+      background: #0F766E;
+    }
+    .btn-clear {
+      background: rgba(148, 163, 184, 0.15);
+      color: #CBD5E1;
+    }
+    .btn-clear:hover {
+      background: rgba(148, 163, 184, 0.25);
+    }
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
@@ -100,6 +154,15 @@
   </style>
 </head>
 <body>
+  <noscript>
+    <div style="position:fixed;inset:0;background:#0F172A;color:#FFFFFF;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:sans-serif;z-index:9999;">
+      <div>
+        <h2 style="margin-bottom:8px;">JavaScript is Required</h2>
+        <p style="color:#94A3B8;max-width:400px;line-height:1.5;">Travel Buddy requires JavaScript to calculate fair prices and scam alerts. Please enable JavaScript in your browser settings to continue.</p>
+      </div>
+    </div>
+  </noscript>
+
   <div id="loading-indicator">
     <div class="logo-container">
       <span class="logo-symbol">₹</span>
@@ -107,7 +170,69 @@
     <div class="title">Travel Buddy</div>
     <div class="subtitle">Fair Prices & Scam Defense for India</div>
     <div class="spinner"></div>
+
+    <div id="watchdog-box">
+      <div class="watchdog-title">Taking longer than expected</div>
+      <div class="watchdog-desc">Cached files or a slow network may be delaying startup.</div>
+      <div class="watchdog-actions">
+        <button class="watchdog-btn btn-reload" onclick="window.location.reload()">Reload</button>
+        <button class="watchdog-btn btn-clear" onclick="clearCacheAndReload()">Clear cache & reload</button>
+      </div>
+    </div>
   </div>
+
+  <script>
+    window._flutterAppLoaded = false;
+    const watchdogTimer = setTimeout(() => {
+      const splash = document.getElementById('loading-indicator');
+      if (splash && !window._flutterAppLoaded) {
+        const box = document.getElementById('watchdog-box');
+        if (box) box.style.display = 'flex';
+      }
+    }, 12000);
+
+    function dismissSplash() {
+      if (window._flutterAppLoaded) return;
+      window._flutterAppLoaded = true;
+      clearTimeout(watchdogTimer);
+      const splash = document.getElementById('loading-indicator');
+      if (splash) {
+        splash.style.opacity = '0';
+        splash.style.transition = 'opacity 0.25s ease-out';
+        setTimeout(() => splash.remove(), 260);
+      }
+    }
+
+    window.addEventListener('flutter-first-frame', dismissSplash);
+
+    const observer = new MutationObserver(() => {
+      if (document.querySelector('flt-glass-pane') || document.querySelector('flutter-view')) {
+        observer.disconnect();
+        dismissSplash();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    async function clearCacheAndReload() {
+      try {
+        if ('serviceWorker' in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const reg of registrations) {
+            await reg.unregister();
+          }
+        }
+        if ('caches' in window) {
+          const keys = await caches.keys();
+          for (const key of keys) {
+            await caches.delete(key);
+          }
+        }
+      } catch (err) {
+        console.warn('Error clearing caches:', err);
+      }
+      window.location.reload(true);
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -457,17 +457,26 @@ class _AppPlacesSearchBarState extends ConsumerState<AppPlacesSearchBar> {
 
     setState(() => _isLoading = true);
     try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.medium,
-        ),
-      );
+      Position? pos;
+      try {
+        pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.medium,
+          ),
+        ).timeout(const Duration(seconds: 4));
+      } catch (geoError) {
+        debugPrint('⚠️ [Location] Location timed out or unavailable: $geoError');
+      }
+
+      final lat = pos?.latitude ?? 26.9124;
+      final lng = pos?.longitude ?? 75.7873;
+
       if (!mounted) return;
       setState(() => _isLoading = false);
 
       final mapsService = ref.read(googleMapsServiceProvider);
       final details = await mapsService.getPlaceDetails(
-        'loc_${pos.latitude.toStringAsFixed(4)}_${pos.longitude.toStringAsFixed(4)}',
+        'loc_${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}',
         seedFallback: null,
       );
       widget.onPlaceSelected(details);

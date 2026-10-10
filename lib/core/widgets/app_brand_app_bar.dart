@@ -76,12 +76,16 @@ class AppBrandAppBar extends ConsumerWidget implements PreferredSizeWidget {
       title: title != null
           ? Text(title!)
           : Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Travel Buddy',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.4,
+                Flexible(
+                  child: Text(
+                    'Travel Buddy',
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.4,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 6),

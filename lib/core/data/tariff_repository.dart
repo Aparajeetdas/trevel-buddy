@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/app_models.dart';
+import '../utils/async_utils.dart';
 
 /// Repository interface for government tariffs with bundled snapshot and optional remote fallback
 abstract class GovTariffRepository {
@@ -110,5 +111,10 @@ final govTariffRepositoryProvider = Provider<GovTariffRepository>((ref) {
 
 final tariffsFutureProvider = FutureProvider<List<GovTariff>>((ref) async {
   final repo = ref.watch(govTariffRepositoryProvider);
-  return repo.getTariffs();
+  return withTimeout(
+    repo.getTariffs(),
+    timeout: const Duration(seconds: 4),
+    fallback: <GovTariff>[],
+    operationName: 'Load Tariffs',
+  );
 });

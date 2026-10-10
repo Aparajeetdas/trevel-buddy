@@ -8,7 +8,6 @@ import '../../features/explore/presentation/explore_screen.dart';
 import '../../features/place_guide/presentation/place_guide_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/scam_protection/presentation/verify_driver_screen.dart';
-import '../../features/home/presentation/welcome_screen.dart';
 import '../../features/price_checker/presentation/check_price_input_screen.dart';
 import '../../features/ride/presentation/ride_mode_screen.dart';
 import '../../features/community_reports/presentation/community_reports_screen.dart';
@@ -23,13 +22,9 @@ final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
-  initialLocation: '/welcome',
+  initialLocation: '/',
   routes: [
-    GoRoute(
-      parentNavigatorKey: _rootNavigatorKey,
-      path: '/welcome',
-      builder: (context, state) => const WelcomeScreen(),
-    ),
+
     // Bottom Navigation Shell with exactly 3 tabs: Home, Map, Profile
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {

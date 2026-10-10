@@ -1,66 +1,57 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:google_sign_in/google_sign_in.dart';
+
+/// App user model that operates seamlessly in both guest and authenticated modes.
+class AppUser {
+  final String uid;
+  final String? email;
+  final String? displayName;
+  final String? photoUrl;
+
+  const AppUser({
+    required this.uid,
+    this.email,
+    this.displayName,
+    this.photoUrl,
+  });
+}
 
 /// Abstract interface for authentication actions.
 abstract class AuthRepository {
-  /// Stream of authentication state changes. Emits a Firebase [User] when signed in,
-  /// or `null` when signed out.
-  Stream<fb.User?> authStateChanges();
-
-  /// Initiates Google sign‑in flow. Returns the signed‑in [User] or `null`
-  /// if the user cancelled or an error occurred.
-  Future<fb.User?> signInWithGoogle();
-
-  /// Signs out the current user.
+  Stream<AppUser?> authStateChanges();
+  Future<AppUser?> signInWithGoogle();
   Future<void> signOut();
 }
 
-/// Concrete implementation that uses `firebase_auth` and `google_sign_in`.
-class FirebaseAuthRepository implements AuthRepository {
-  final fb.FirebaseAuth _auth = fb.FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+/// Guest/Offline implementation that never blocks app startup.
+/// Allows full browsing in signed-out guest mode without requiring online Firebase Auth.
+class GuestAuthRepository implements AuthRepository {
+  AppUser? _currentUser;
 
   @override
-  Stream<fb.User?> authStateChanges() => _auth.authStateChanges();
+  Stream<AppUser?> authStateChanges() => Stream.value(_currentUser);
 
   @override
-  Future<fb.User?> signInWithGoogle() async {
-    try {
-      // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null; // user cancelled
-
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-
-      final credential = fb.GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final fb.UserCredential userCredential = await _auth.signInWithCredential(credential);
-      return userCredential.user;
-    } catch (e) {
-      // In a production app you would log this error securely.
-      return null;
-    }
+  Future<AppUser?> signInWithGoogle() async {
+    // In web guest mode, provide guest session
+    _currentUser = const AppUser(
+      uid: 'guest_user_1',
+      displayName: 'Guest Traveler',
+      email: 'traveler@guest.local',
+    );
+    return _currentUser;
   }
 
   @override
   Future<void> signOut() async {
-    // Sign out from both Firebase and Google to fully clear the session.
-    await Future.wait([
-      _auth.signOut(),
-      _googleSignIn.signOut(),
-    ]);
+    _currentUser = null;
   }
 }
 
 /// Provider exposing the repository instance.
-final authRepositoryProvider = Provider<AuthRepository>((ref) => FirebaseAuthRepository());
+final authRepositoryProvider = Provider<AuthRepository>((ref) => GuestAuthRepository());
 
-/// Riverpod StreamProvider exposing the current user (or `null`).
-final authStateProvider = StreamProvider<fb.User?>((ref) {
+/// Riverpod StreamProvider exposing the current user (or null).
+final authStateProvider = StreamProvider<AppUser?>((ref) {
   final repo = ref.watch(authRepositoryProvider);
   return repo.authStateChanges();
 });

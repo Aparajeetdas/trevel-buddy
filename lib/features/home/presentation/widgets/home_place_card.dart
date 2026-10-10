@@ -161,7 +161,10 @@ class HomePlaceCard extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   // Key Highlights
-                  Row(
+                  Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
                       _buildChip(
                         icon: Icons.currency_rupee_rounded,
@@ -169,13 +172,11 @@ class HomePlaceCard extends StatelessWidget {
                             'Fair from ₹${lowestFairRate.toStringAsFixed(0)}',
                         color: AppColors.success,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
                       _buildChip(
                         icon: Icons.directions_bus_rounded,
                         label: '${place.transportOptions.length} routes',
                         color: AppColors.primary,
                       ),
-                      const Spacer(),
                       InkWell(
                         onTap: () {
                           MapLauncherService().openPlace(

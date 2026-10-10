@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/app_models.dart';
+import '../utils/async_utils.dart';
 
 abstract class AppDataRepository {
   Future<List<Place>> getPlaces();
@@ -210,29 +211,54 @@ final appRepositoryProvider = Provider<AppDataRepository>((ref) {
 // StateNotifier / FutureProviders for reactive UI
 final placesFutureProvider = FutureProvider<List<Place>>((ref) async {
   final repo = ref.watch(appRepositoryProvider);
-  return repo.getPlaces();
+  return withTimeout(
+    repo.getPlaces(),
+    timeout: const Duration(seconds: 4),
+    fallback: <Place>[],
+    operationName: 'Load Places',
+  );
 });
 
 final scamZonesFutureProvider = FutureProvider<List<ScamReportZone>>((
   ref,
 ) async {
   final repo = ref.watch(appRepositoryProvider);
-  return repo.getScamReportZones();
+  return withTimeout(
+    repo.getScamReportZones(),
+    timeout: const Duration(seconds: 4),
+    fallback: <ScamReportZone>[],
+    operationName: 'Load Scam Zones',
+  );
 });
 
 final fairPricesFutureProvider = FutureProvider<List<FairPrice>>((ref) async {
   final repo = ref.watch(appRepositoryProvider);
-  return repo.getFairPrices();
+  return withTimeout(
+    repo.getFairPrices(),
+    timeout: const Duration(seconds: 4),
+    fallback: <FairPrice>[],
+    operationName: 'Load Fair Prices',
+  );
 });
 
 final driversFutureProvider = FutureProvider<List<Driver>>((ref) async {
   final repo = ref.watch(appRepositoryProvider);
-  return repo.getDrivers();
+  return withTimeout(
+    repo.getDrivers(),
+    timeout: const Duration(seconds: 4),
+    fallback: <Driver>[],
+    operationName: 'Load Drivers',
+  );
 });
 
 final fareRulesFutureProvider = FutureProvider<List<FareRule>>((ref) async {
   final repo = ref.watch(appRepositoryProvider);
-  return repo.getFareRules();
+  return withTimeout(
+    repo.getFareRules(),
+    timeout: const Duration(seconds: 4),
+    fallback: <FareRule>[],
+    operationName: 'Load Fare Rules',
+  );
 });
 
 class ScamReportsNotifier extends AsyncNotifier<List<ScamReport>> {

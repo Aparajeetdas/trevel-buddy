@@ -138,12 +138,15 @@ class HomeHeroSearchBar extends ConsumerWidget {
                           color: AppColors.primary,
                         ),
                         SizedBox(width: 6),
-                        Text(
-                          'Check Any Quoted Price Now',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
+                        Flexible(
+                          child: Text(
+                            'Check Any Quoted Price Now',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ],
@@ -185,11 +188,14 @@ class HomeHeroSearchBar extends ConsumerWidget {
                           color: AppColors.primary,
                         ),
                         SizedBox(width: 6),
-                        Text(
-                          'Ride Mode',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                        Flexible(
+                          child: Text(
+                            'Ride Mode',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -225,11 +231,14 @@ class HomeHeroSearchBar extends ConsumerWidget {
                           color: AppColors.warning,
                         ),
                         SizedBox(width: 6),
-                        Text(
-                          'Verify Driver',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
+                        Flexible(
+                          child: Text(
+                            'Verify Driver',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],

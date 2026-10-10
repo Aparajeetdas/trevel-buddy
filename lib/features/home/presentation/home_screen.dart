@@ -110,13 +110,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.star_rounded, color: Colors.amber, size: 20),
-                      SizedBox(width: 6),
-                      Text(
-                        'Featured Destinations',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                      const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          'Featured Destinations',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ],
