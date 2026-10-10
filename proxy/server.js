@@ -772,9 +772,14 @@ const handler = async (req, res) => {
           const data = await upstreamRes.json();
           logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
           return sendJson(res, 200, data, origin);
+        } else {
+          const errText = await upstreamRes.text();
+          console.error(`[Places Autocomplete Upstream Error] HTTP ${upstreamRes.status}: ${errText}`);
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[Places Autocomplete Error]', err.message);
+    }
 
     logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
     return sendJson(res, 200, { suggestions: [] }, origin);
@@ -833,9 +838,14 @@ const handler = async (req, res) => {
           const data = await upstreamRes.json();
           logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
           return sendJson(res, 200, data, origin);
+        } else {
+          const errText = await upstreamRes.text();
+          console.error(`[Places TextSearch Upstream Error] HTTP ${upstreamRes.status}: ${errText}`);
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[Places TextSearch Error]', err.message);
+    }
 
     logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
     return sendJson(res, 200, { places: [] }, origin);
@@ -901,9 +911,14 @@ const handler = async (req, res) => {
           const data = await upstreamRes.json();
           logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
           return sendJson(res, 200, data, origin);
+        } else {
+          const errText = await upstreamRes.text();
+          console.error(`[Places Details Upstream Error] HTTP ${upstreamRes.status}: ${errText}`);
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[Places Details Error]', err.message);
+    }
 
     logAccess(req.method, pathname, 404, Date.now() - startTime, clientIp);
     return sendJson(res, 404, { error: 'Place details unavailable' }, origin);
@@ -1036,19 +1051,30 @@ const handler = async (req, res) => {
 
   // 6. POST /route
   if (req.method === 'POST' && pathname === '/route') {
-    const val = validateSchema(body, {
-      allowed: ['originLat', 'originLng', 'destLat', 'destLng', 'mode', 'departTime'],
-      rules: {
-        originLat: { type: 'number', required: true, min: -90, max: 90 },
-        originLng: { type: 'number', required: true, min: -180, max: 180 },
-        destLat: { type: 'number', required: true, min: -90, max: 90 },
-        destLng: { type: 'number', required: true, min: -180, max: 180 },
-        mode: { type: 'string', maxLength: 20 },
-      },
-    });
-    if (!val.valid) {
+    let originLat = body.originLat;
+    let originLng = body.originLng;
+    let destLat = body.destLat;
+    let destLng = body.destLng;
+    let mode = body.mode || 'DRIVE';
+
+    // Support nested origin/destination objects from RouteService
+    if (body.origin && typeof body.origin === 'object') {
+      originLat = body.origin.latitude ?? body.origin.lat ?? originLat;
+      originLng = body.origin.longitude ?? body.origin.lng ?? originLng;
+    }
+    if (body.destination && typeof body.destination === 'object') {
+      destLat = body.destination.latitude ?? body.destination.lat ?? destLat;
+      destLng = body.destination.longitude ?? body.destination.lng ?? destLng;
+    }
+
+    if (
+      typeof originLat !== 'number' || isNaN(originLat) || originLat < -90 || originLat > 90 ||
+      typeof originLng !== 'number' || isNaN(originLng) || originLng < -180 || originLng > 180 ||
+      typeof destLat !== 'number' || isNaN(destLat) || destLat < -90 || destLat > 90 ||
+      typeof destLng !== 'number' || isNaN(destLng) || destLng < -180 || destLng > 180
+    ) {
       logAccess(req.method, pathname, 400, Date.now() - startTime, clientIp);
-      return sendJson(res, 400, { error: 'Invalid request parameters' }, origin);
+      return sendJson(res, 400, { error: 'Invalid origin or destination coordinates' }, origin);
     }
 
     try {
@@ -1056,12 +1082,13 @@ const handler = async (req, res) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-        const travelMode = (body.mode || 'DRIVE').toUpperCase();
+        const travelMode = String(mode).toUpperCase();
         const payload = {
-          origin: { location: { latLng: { latitude: body.originLat, longitude: body.originLng } } },
-          destination: { location: { latLng: { latitude: body.destLat, longitude: body.destLng } } },
+          origin: { location: { latLng: { latitude: originLat, longitude: originLng } } },
+          destination: { location: { latLng: { latitude: destLat, longitude: destLng } } },
           travelMode: ['DRIVE', 'TWO_WHEELER', 'TRANSIT', 'WALK'].includes(travelMode) ? travelMode : 'DRIVE',
           routingPreference: travelMode === 'DRIVE' ? 'TRAFFIC_AWARE' : 'ROUTING_PREFERENCE_UNSPECIFIED',
+          computeAlternativeRoutes: Boolean(body.computeAlternativeRoutes),
         };
 
         let upstreamRes;
@@ -1084,18 +1111,23 @@ const handler = async (req, res) => {
           const data = await upstreamRes.json();
           logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
           return sendJson(res, 200, data, origin);
+        } else {
+          const errText = await upstreamRes.text();
+          console.error(`[Routes Upstream Error] HTTP ${upstreamRes.status}: ${errText}`);
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[Routes Error]', err.message);
+    }
 
     // Fallback: Haversine distance
     const R = 6371;
-    const dLat = ((body.destLat - body.originLat) * Math.PI) / 180;
-    const dLon = ((body.destLng - body.originLng) * Math.PI) / 180;
+    const dLat = ((destLat - originLat) * Math.PI) / 180;
+    const dLon = ((destLng - originLng) * Math.PI) / 180;
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((body.originLat * Math.PI) / 180) *
-        Math.cos((body.destLat * Math.PI) / 180) *
+      Math.cos((originLat * Math.PI) / 180) *
+        Math.cos((destLat * Math.PI) / 180) *
         Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distKm = R * c * 1.3;
@@ -1267,11 +1299,18 @@ JSON format:
                 logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
                 return sendJson(res, 200, validated, origin);
               }
-            } catch (_) {}
+            } catch (pErr) {
+              console.error('[Gemini Explain Parse Error]', pErr.message);
+            }
           }
+        } else {
+          const errText = await geminiRes.text();
+          console.error(`[Gemini Explain Upstream Error] HTTP ${geminiRes.status}: ${errText}`);
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[Gemini Explain Error]', err.message);
+    }
 
     // Deterministic Local Fallback
     const fallback = generateLocalExplanation(body);
@@ -1360,11 +1399,18 @@ Respond in valid JSON with:
                 logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
                 return sendJson(res, 200, validated, origin);
               }
-            } catch (_) {}
+            } catch (pErr) {
+              console.error('[Gemini Agent Parse Error]', pErr.message);
+            }
           }
+        } else {
+          const errText = await geminiRes.text();
+          console.error(`[Gemini Agent Upstream Error] HTTP ${geminiRes.status}: ${errText}`);
         }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error('[Gemini Agent Error]', err.message);
+    }
 
     const fallback = generateLocalAgentResponse(body);
     logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
