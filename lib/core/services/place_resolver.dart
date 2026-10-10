@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
 import '../models/app_models.dart';
 import '../utils/engine_math.dart';
 
@@ -17,12 +18,7 @@ class PlaceResolver {
 
   PlaceResolver({http.Client? client, String? proxyBaseUrl})
     : _client = client ?? http.Client(),
-      proxyBaseUrl =
-          proxyBaseUrl ??
-          const String.fromEnvironment(
-            'GEMINI_PROXY_URL',
-            defaultValue: 'http://localhost:8080',
-          );
+      proxyBaseUrl = proxyBaseUrl ?? ApiConfig.proxyBaseUrl;
 
   String _coordKey(LatLng pos) =>
       '${pos.latitude.toStringAsFixed(4)},${pos.longitude.toStringAsFixed(4)}';

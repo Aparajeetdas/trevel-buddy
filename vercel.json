@@ -1,7 +1,20 @@
 {
   "outputDirectory": "build/web",
   "cleanUrls": true,
+  "functions": {
+    "api/index.js": {
+      "includeFiles": "proxy/**"
+    }
+  },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(health|places/.*|geocode|route|resolve-link|explain|agent)",
+      "destination": "/api"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

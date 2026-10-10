@@ -57,10 +57,16 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 const defaultAllowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
+  'http://localhost:8081',
+  'http://localhost:8082',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:8080',
+  'http://127.0.0.1:8081',
+  'http://127.0.0.1:8082',
   'https://travelbuddy.web.app',
   'https://travel-buddy.web.app',
+  'https://aparajeet-das.web.app',
+  'https://travel-buddy-iota-gold.vercel.app',
 ];
 const rawAllowed = process.env.ALLOWED_ORIGINS || '';
 const ALLOWED_ORIGINS = new Set(
@@ -68,6 +74,15 @@ const ALLOWED_ORIGINS = new Set(
     ? rawAllowed.split(',').map((o) => o.trim().toLowerCase()).filter(Boolean)
     : defaultAllowedOrigins.map((o) => o.toLowerCase())
 );
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  const o = origin.toLowerCase();
+  if (ALLOWED_ORIGINS.has(o)) return true;
+  if (o.endsWith('.vercel.app') || o.endsWith('.web.app') || o.endsWith('.firebaseapp.com')) return true;
+  if (o.startsWith('http://localhost:') || o.startsWith('http://127.0.0.1:')) return true;
+  return false;
+}
 
 // Daily Circuit Breaker Caps
 const DAILY_CAPS = {
@@ -164,7 +179,7 @@ function sendJson(res, statusCode, data, origin = null) {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
   };
-  if (origin && ALLOWED_ORIGINS.has(origin.toLowerCase())) {
+  if (origin && isAllowedOrigin(origin)) {
     headers['Access-Control-Allow-Origin'] = origin;
     headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS';
     headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With';
@@ -174,9 +189,24 @@ function sendJson(res, statusCode, data, origin = null) {
   res.end(body);
 }
 
-// Request Payload Parser with Strict 8 KB Limit
+// Request Payload Parser with Strict 8 KB Limit (supports both streams & pre-parsed bodies)
 function parseJsonBody(req) {
   return new Promise((resolve, reject) => {
+    if (req.body !== undefined && req.body !== null) {
+      if (typeof req.body === 'object') {
+        return resolve(req.body);
+      }
+      if (typeof req.body === 'string') {
+        if (!req.body.trim()) return resolve({});
+        try {
+          return resolve(JSON.parse(req.body));
+        } catch (_) {
+          const err = new Error('MALFORMED_JSON');
+          err.statusCode = 400;
+          return reject(err);
+        }
+      }
+    }
     let raw = '';
     const MAX_BYTES = 8192; // 8 KB
     let exceeded = false;
@@ -599,26 +629,23 @@ function generateLocalAgentResponse(body) {
   };
 }
 
-// Main HTTP Server
-const server = http.createServer(async (req, res) => {
+// Main HTTP Request Handler
+const handler = async (req, res) => {
   const startTime = Date.now();
   const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
   const origin = req.headers['origin'];
 
   // 1. CORS Origin Verification (Reject unauthorized origins)
-  if (origin) {
-    const isAllowed = ALLOWED_ORIGINS.has(origin.toLowerCase());
-    if (!isAllowed) {
-      logAccess(req.method, req.url, 403, Date.now() - startTime, clientIp);
-      res.writeHead(403, { 'Content-Type': 'application/json' });
-      return res.end(JSON.stringify({ error: 'Origin not allowed' }));
-    }
+  if (origin && !isAllowedOrigin(origin)) {
+    logAccess(req.method, req.url, 403, Date.now() - startTime, clientIp);
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    return res.end(JSON.stringify({ error: 'Origin not allowed' }));
   }
 
   // Handle CORS Preflight
   if (req.method === 'OPTIONS') {
     res.writeHead(204, {
-      'Access-Control-Allow-Origin': origin || 'http://localhost:3000',
+      'Access-Control-Allow-Origin': (origin && isAllowedOrigin(origin)) ? origin : (origin || '*'),
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
       'Access-Control-Max-Age': '86400',
@@ -628,10 +655,10 @@ const server = http.createServer(async (req, res) => {
   }
 
   const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const pathname = parsedUrl.pathname;
+  const pathname = parsedUrl.pathname.replace(/^\/api/, '') || '/';
 
   // Health Check
-  if (req.method === 'GET' && pathname === '/health') {
+  if (req.method === 'GET' && (pathname === '/health' || pathname === '/' || pathname === '')) {
     logAccess('GET', pathname, 200, Date.now() - startTime, clientIp);
     return sendJson(res, 200, {
       status: 'ok',
@@ -1347,7 +1374,10 @@ Respond in valid JSON with:
   // Not Found
   logAccess(req.method, pathname, 404, Date.now() - startTime, clientIp);
   return sendJson(res, 404, { error: 'Endpoint not found' }, origin);
-});
+};
+
+// Create Node.js HTTP server from handler
+const server = http.createServer(handler);
 
 // Start proxy server if executed directly
 if (require.main === module) {
@@ -1360,6 +1390,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  handler,
   server,
   validateSchema,
   isAllowedMapsDomain,

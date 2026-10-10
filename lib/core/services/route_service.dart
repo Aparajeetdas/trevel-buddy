@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
 import '../models/google_maps_models.dart';
 import '../utils/engine_math.dart';
 import '../utils/route_points_decoder.dart';
@@ -27,12 +28,7 @@ class RouteService {
 
   RouteService({http.Client? client, String? proxyBaseUrl})
     : _client = client ?? http.Client(),
-      proxyBaseUrl =
-          proxyBaseUrl ??
-          const String.fromEnvironment(
-            'GEMINI_PROXY_URL',
-            defaultValue: 'http://localhost:8080',
-          );
+      proxyBaseUrl = proxyBaseUrl ?? ApiConfig.proxyBaseUrl;
 
   String _cacheKey(LatLng origin, LatLng dest, String mode) {
     return '${origin.latitude.toStringAsFixed(4)},${origin.longitude.toStringAsFixed(4)}->${dest.latitude.toStringAsFixed(4)},${dest.longitude.toStringAsFixed(4)}_$mode';

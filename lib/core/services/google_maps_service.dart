@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/api_config.dart';
 import '../models/app_models.dart';
 import 'route_service.dart';
 
@@ -30,15 +31,7 @@ class GoogleMapsService {
     this.onDebugLog,
   }) : _client = client ?? http.Client(),
        _routeService = routeService ?? RouteService(),
-       proxyBaseUrl =
-           proxyBaseUrl ??
-           const String.fromEnvironment(
-             'GOOGLE_MAPS_PROXY_URL',
-             defaultValue: String.fromEnvironment(
-               'GEMINI_PROXY_URL',
-               defaultValue: 'http://localhost:8080',
-             ),
-           );
+       proxyBaseUrl = proxyBaseUrl ?? ApiConfig.proxyBaseUrl;
 
   static String _generateSessionToken() {
     final rand = math.Random();

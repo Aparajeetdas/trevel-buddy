@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
 import '../models/ai_explanation_models.dart';
 import '../models/price_engine_models.dart';
 
@@ -12,14 +13,12 @@ final geminiProxyServiceProvider = Provider<GeminiProxyService>((ref) {
 
 /// Client service communicating with the secure Gemini Serverless Proxy
 class GeminiProxyService {
-  static const String _proxyBaseUrl = String.fromEnvironment(
-    'GEMINI_PROXY_URL',
-    defaultValue: 'http://localhost:8080',
-  );
-
+  final String _proxyBaseUrl;
   final http.Client _client;
 
-  GeminiProxyService({http.Client? client}) : _client = client ?? http.Client();
+  GeminiProxyService({http.Client? client, String? proxyBaseUrl})
+      : _client = client ?? http.Client(),
+        _proxyBaseUrl = proxyBaseUrl ?? ApiConfig.proxyBaseUrl;
 
   /// Request structured AI fare analysis from the proxy, with deterministic local fallback
   Future<AiExplanationResult> getExplanation({
