@@ -1,0 +1,89 @@
+[
+  {
+    "id": "area-jpr-station",
+    "areaName": "Jaipur Railway Station Zone",
+    "centerLat": 26.9200,
+    "centerLng": 75.7878,
+    "priceIndex": 1.45,
+    "complaintCount90d": 89,
+    "topTrapTypes": ["overcharging", "meter tampering"],
+    "saferAlternatives": [
+      "Traffic Police Prepaid Auto Booth (Platform 1 Exit)",
+      "Designated Ola/Uber Pickup Bay (Civil Lines Gate)"
+    ],
+    "lastUpdated": "2026-03-29T18:00:00.000Z"
+  },
+  {
+    "id": "area-jpr-amer",
+    "areaName": "Amer Fort & Mawota Lake Zone",
+    "centerLat": 26.9855,
+    "centerLng": 75.8513,
+    "priceIndex": 1.55,
+    "complaintCount90d": 109,
+    "topTrapTypes": ["fake guide", "commission shop"],
+    "saferAlternatives": [
+      "Official ASI Licensed Guide Counter (Jaleb Chowk)",
+      "RTDC Government Souvenir Emporium"
+    ],
+    "lastUpdated": "2026-03-29T14:30:00.000Z"
+  },
+  {
+    "id": "area-del-ndls",
+    "areaName": "New Delhi Station & Paharganj Hub",
+    "centerLat": 28.6429,
+    "centerLng": 77.2195,
+    "priceIndex": 1.62,
+    "complaintCount90d": 172,
+    "topTrapTypes": ["fake closure", "meter tampering", "fake booking"],
+    "saferAlternatives": [
+      "Delhi Traffic Police Prepaid Auto Booth (Ajmeri Gate)",
+      "Airport Express Metro Station Line (Gate 2)",
+      "DTTDC Central Government Office (88 Janpath)"
+    ],
+    "lastUpdated": "2026-03-29T12:00:00.000Z"
+  },
+  {
+    "id": "area-agr-taj",
+    "areaName": "Taj Mahal West Gate Corridor",
+    "centerLat": 27.1751,
+    "centerLng": 78.0421,
+    "priceIndex": 1.68,
+    "complaintCount90d": 216,
+    "topTrapTypes": ["fake guide", "commission shop", "overcharging"],
+    "saferAlternatives": [
+      "UP Tourism Information Counter (West Gate Complex)",
+      "Official UP Handicrafts Gangotri Emporium",
+      "Official ASI Online Ticket Turnstiles (asi.payumoney.com)"
+    ],
+    "lastUpdated": "2026-03-29T08:00:00.000Z"
+  },
+  {
+    "id": "area-vns-ghats",
+    "areaName": "Dashashwamedh & Godowlia Ghats",
+    "centerLat": 25.3076,
+    "centerLng": 83.0104,
+    "priceIndex": 1.48,
+    "complaintCount90d": 128,
+    "topTrapTypes": ["overcharging", "hidden charge", "commission shop"],
+    "saferAlternatives": [
+      "District Administration Fixed-Rate Boat Stand",
+      "UP Government Trade Facilitation Centre (Chowkaghat)",
+      "Kashi Vishwanath Official Trust Helpdesk"
+    ],
+    "lastUpdated": "2026-03-29T17:30:00.000Z"
+  },
+  {
+    "id": "area-udr-palace",
+    "areaName": "Udaipur City Palace & Jagdish Chowk",
+    "centerLat": 24.5764,
+    "centerLng": 73.6835,
+    "priceIndex": 1.38,
+    "complaintCount90d": 74,
+    "topTrapTypes": ["overcharging", "fake guide"],
+    "saferAlternatives": [
+      "Official Rameshwar Ghat Boat Counter (City Palace)",
+      "Rajasthan State Handloom Development Corp Showroom"
+    ],
+    "lastUpdated": "2026-03-28T16:45:00.000Z"
+  }
+]

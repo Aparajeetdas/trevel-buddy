@@ -1,0 +1,30 @@
+title = "Travel Buddy Gitleaks Secret Scanning Configuration"
+
+[extend]
+useDefault = true
+
+[[rules]]
+description = "Google Cloud API Key"
+id = "google-cloud-api-key"
+regex = '''AIza[0-9A-Za-z\\-_]{35}'''
+secretGroup = 1
+keywords = ["aiza"]
+
+[[rules]]
+description = "Generic High-Entropy Secret / Token"
+id = "generic-api-key"
+regex = '''(?i)(api[_-]?key|secret|token|password)[\s]*[=:][\s]*['"][0-9a-zA-Z\\-_]{16,}['"]'''
+keywords = ["api_key", "secret", "token", "password"]
+
+[allowlist]
+description = "Allowlisted example placeholders and documentation"
+paths = [
+  '''\.env\.example$''',
+  '''README\.md$''',
+  '''test/.*''',
+]
+regexes = [
+  '''your_google_cloud_server_key_here''',
+  '''your_gemini_api_key_here''',
+  '''AIzaSyDummyKeyForTestingOnly.*''',
+]

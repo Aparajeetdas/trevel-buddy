@@ -1,0 +1,67 @@
+[
+  {
+    "id": "drv_1",
+    "name": "Rajendra Prasad Sharma",
+    "vehicleNumber": "RJ 14 TA 8821",
+    "vehicleType": "Toyota Etios (Sedan)",
+    "photoUrl": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80",
+    "isVerified": true,
+    "rating": 4.9,
+    "complaints": 0,
+    "route": "Jaipur City Tour & Amer Fort",
+    "fairPriceForRoute": 1200.0,
+    "phone": "+91 98291 43210"
+  },
+  {
+    "id": "drv_2",
+    "name": "Ramesh Fernandez",
+    "vehicleNumber": "GA 03 T 4452",
+    "vehicleType": "Maruti Ertiga (7-Seater)",
+    "photoUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&auto=format&fit=crop&q=80",
+    "isVerified": true,
+    "rating": 4.8,
+    "complaints": 1,
+    "route": "Goa Airport to Calangute / Candolim",
+    "fairPriceForRoute": 1400.0,
+    "phone": "+91 98221 77412"
+  },
+  {
+    "id": "drv_3",
+    "name": "Surinder Thakur",
+    "vehicleNumber": "HP 01 UA 3190",
+    "vehicleType": "Mahindra Scorpio 4x4",
+    "photoUrl": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&auto=format&fit=crop&q=80",
+    "isVerified": true,
+    "rating": 4.95,
+    "complaints": 0,
+    "route": "Manali to Rohtang Pass / Solang Valley",
+    "fairPriceForRoute": 2400.0,
+    "phone": "+91 94180 55198"
+  },
+  {
+    "id": "drv_4",
+    "name": "Vikas Yadav",
+    "vehicleNumber": "UP 80 BT 9924",
+    "vehicleType": "Tata Indigo (Cab)",
+    "photoUrl": "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=300&auto=format&fit=crop&q=80",
+    "isVerified": false,
+    "rating": 2.4,
+    "complaints": 14,
+    "route": "Agra Cantt to Taj Mahal / Fatehpur Sikri",
+    "fairPriceForRoute": 600.0,
+    "phone": "+91 97580 11200"
+  },
+  {
+    "id": "drv_5",
+    "name": "Santosh Tiwari",
+    "vehicleNumber": "UP 65 CR 4310",
+    "vehicleType": "Bajaj RE Auto Rickshaw",
+    "photoUrl": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=300&auto=format&fit=crop&q=80",
+    "isVerified": true,
+    "rating": 4.7,
+    "complaints": 2,
+    "route": "Varanasi Cantt to Assi Ghat & Kashi Vishwanath",
+    "fairPriceForRoute": 150.0,
+    "phone": "+91 94500 88912"
+  }
+]

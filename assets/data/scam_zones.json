@@ -1,0 +1,112 @@
+[
+  {
+    "id": "zone_1",
+    "title": "Jaipur City Palace & Hawa Mahal Touts",
+    "location": "Badi Choupad, Pink City, Jaipur",
+    "latitude": 26.9239,
+    "longitude": 75.8267,
+    "radiusMeters": 450.0,
+    "riskLevel": "High",
+    "reportsCount": 42,
+    "description": "Aggressive touts claiming monument is closed or offering fake gemstone emporium tours with kickbacks."
+  },
+  {
+    "id": "zone_2",
+    "title": "Amer Fort Elephant & Jeep Ring",
+    "location": "Amer Fort Base, Jaipur",
+    "latitude": 26.9855,
+    "longitude": 75.8513,
+    "radiusMeters": 350.0,
+    "riskLevel": "Medium",
+    "reportsCount": 27,
+    "description": "Unauthorized guides intercepting tourists before ticket booths claiming mandatory guide permits."
+  },
+  {
+    "id": "zone_3",
+    "title": "Baga Beach Water Sports Overcharge Zone",
+    "location": "Baga Beach, North Goa",
+    "latitude": 15.5553,
+    "longitude": 73.7517,
+    "radiusMeters": 600.0,
+    "riskLevel": "High",
+    "reportsCount": 58,
+    "description": "Operators quoting ₹3,000 for 2-minute jet ski rides without safety vests or standard union rates."
+  },
+  {
+    "id": "zone_4",
+    "title": "Thivim & Madgaon Railway Taxi Syndicate",
+    "location": "Thivim Railway Station, Goa",
+    "latitude": 15.6265,
+    "longitude": 73.8647,
+    "radiusMeters": 300.0,
+    "riskLevel": "High",
+    "reportsCount": 64,
+    "description": "Taxi drivers refusing prepaid counters and charging 2.5x standard fare to beach destinations."
+  },
+  {
+    "id": "zone_5",
+    "title": "Solang Valley Snow Gear Rental Touts",
+    "location": "Solang Valley, Manali",
+    "latitude": 32.3166,
+    "longitude": 77.1575,
+    "radiusMeters": 500.0,
+    "riskLevel": "High",
+    "reportsCount": 73,
+    "description": "Roadside stalls forcing tourists to rent oversized dirty snow suits at ₹800/person claiming entry bans."
+  },
+  {
+    "id": "zone_6",
+    "title": "Old Manali Auto Stand Price Gouging",
+    "location": "Old Manali Bridge, Manali",
+    "latitude": 32.2530,
+    "longitude": 77.1822,
+    "radiusMeters": 250.0,
+    "riskLevel": "Medium",
+    "reportsCount": 19,
+    "description": "Night-time auto rickshaws quoting ₹300 for a 1.2 km ride to Mall Road after 8 PM."
+  },
+  {
+    "id": "zone_7",
+    "title": "Dashashwamedh Ghat Aarti Boat Hustle",
+    "location": "Dashashwamedh Ghat, Varanasi",
+    "latitude": 25.3076,
+    "longitude": 83.0107,
+    "radiusMeters": 400.0,
+    "riskLevel": "High",
+    "reportsCount": 89,
+    "description": "Boatmen charging ₹2,500 for a shared aarti view or demanding sudden religious donations mid-river."
+  },
+  {
+    "id": "zone_8",
+    "title": "Manikarnika Ghat 'Cremation Wood Donation' Scam",
+    "location": "Manikarnika Ghat, Varanasi",
+    "latitude": 25.3109,
+    "longitude": 83.0139,
+    "radiusMeters": 200.0,
+    "riskLevel": "High",
+    "reportsCount": 110,
+    "description": "Fake hospice workers cornering foreigners to donate ₹5,000 for sandalwood for poor families."
+  },
+  {
+    "id": "zone_9",
+    "title": "Taj Mahal West Gate Marble Emporium Detour",
+    "location": "West Gate, Taj Mahal, Agra",
+    "latitude": 27.1738,
+    "longitude": 78.0380,
+    "radiusMeters": 500.0,
+    "riskLevel": "High",
+    "reportsCount": 94,
+    "description": "Rickshaws refusing to go directly to gate, diverting to high-commission alabaster souvenir factories."
+  },
+  {
+    "id": "zone_10",
+    "title": "Agra Fort Fake Audio Guide & Ticket Sellers",
+    "location": "Amar Singh Gate, Agra Fort",
+    "latitude": 27.1795,
+    "longitude": 78.0211,
+    "radiusMeters": 350.0,
+    "riskLevel": "Medium",
+    "reportsCount": 33,
+    "description": "Unauthorized persons selling invalid photocopied entry passes or broken audio gadgets at inflated rates."
+  }
+]

@@ -1,0 +1,134 @@
+[
+  {
+    "id": "fp_1",
+    "title": "Airport to City Center Taxi (Prepaid)",
+    "category": "ride",
+    "routeOrItem": "Jaipur Airport -> Pink City / MI Road",
+    "fairMin": 350.0,
+    "fairMax": 450.0,
+    "unit": "fixed ride",
+    "tip": "Always take the official prepaid taxi booth inside arrivals or app cabs. Avoid touts standing at the exit door.",
+    "priceCap": 500.0
+  },
+  {
+    "id": "fp_2",
+    "title": "Auto Rickshaw (Short hop 3-5 km)",
+    "category": "ride",
+    "routeOrItem": "City local 3-5 km ride",
+    "fairMin": 50.0,
+    "fairMax": 80.0,
+    "unit": "per ride",
+    "tip": "Insist on the meter or agree on ₹60-70 before boarding. Refuse commission-based textile shop detours.",
+    "priceCap": 100.0
+  },
+  {
+    "id": "fp_3",
+    "title": "Goa Airport (Dabolim) to Calangute/Baga Taxi",
+    "category": "ride",
+    "routeOrItem": "Dabolim Airport -> North Goa Beach Belt",
+    "fairMin": 1200.0,
+    "fairMax": 1500.0,
+    "unit": "fixed ride",
+    "tip": "Book via GoaMiles app or Goa Govt Prepaid counter. Private taxi mafia frequently demands ₹2,500+.",
+    "priceCap": 1600.0
+  },
+  {
+    "id": "fp_4",
+    "title": "Manali Mall Road to Solang Valley Taxi",
+    "category": "ride",
+    "routeOrItem": "Mall Road -> Solang Valley (Round trip with waiting)",
+    "fairMin": 1400.0,
+    "fairMax": 1800.0,
+    "unit": "round trip",
+    "tip": "Fixed union rates exist. During peak snow season touts quote ₹3,500+. Always verify with Himachal Tourism booth.",
+    "priceCap": 2000.0
+  },
+  {
+    "id": "fp_5",
+    "title": "Agra Cantt Station to Taj Mahal East Gate",
+    "category": "ride",
+    "routeOrItem": "Agra Cantt -> Taj Mahal East Gate",
+    "fairMin": 120.0,
+    "fairMax": 180.0,
+    "unit": "per auto ride",
+    "tip": "Auto drivers will tell you Taj Mahal is closed for VIPs and offer marble emporiums. It is rarely closed except Fridays.",
+    "priceCap": 220.0
+  },
+  {
+    "id": "fp_6",
+    "title": "Varanasi Ganges Sunrise Boat Ride (Rowing)",
+    "category": "ride",
+    "routeOrItem": "Assi Ghat to Dashashwamedh Ghat (1 hour)",
+    "fairMin": 300.0,
+    "fairMax": 500.0,
+    "unit": "per person or boat",
+    "tip": "Private boatmen ask ₹1,500-2,000 from foreign tourists. Standard boat shared is ₹150, private row boat ₹400-500.",
+    "priceCap": 600.0
+  },
+  {
+    "id": "fp_7",
+    "title": "Authentic Rajasthani Thali",
+    "category": "meal",
+    "routeOrItem": "Traditional Unlimited Thali (Dal Baati Churma)",
+    "fairMin": 220.0,
+    "fairMax": 380.0,
+    "unit": "per person",
+    "tip": "Top heritage thalis cost ₹350-450. Beware tourist dhabas with no printed menu charging ₹800.",
+    "priceCap": 500.0
+  },
+  {
+    "id": "fp_8",
+    "title": "Goan Fish Curry Rice Lunch",
+    "category": "meal",
+    "routeOrItem": "Standard Goan Fish Thali at local beach shack",
+    "fairMin": 180.0,
+    "fairMax": 280.0,
+    "unit": "per thali",
+    "tip": "Kingfish may be seasonal; confirm fresh catch weight and price per piece in advance before order.",
+    "priceCap": 350.0
+  },
+  {
+    "id": "fp_9",
+    "title": "Street Food Tasting (Chaat, Kachori, Lassi)",
+    "category": "meal",
+    "routeOrItem": "Popular Street Food Combo (3 items)",
+    "fairMin": 60.0,
+    "fairMax": 120.0,
+    "unit": "per person",
+    "tip": "Standard Peda/Kachori is ₹20-30 each, Clay pot Lassi is ₹40-60. Always pay standard counter price.",
+    "priceCap": 150.0
+  },
+  {
+    "id": "fp_10",
+    "title": "Cozy Hostel Bed (AC Dorm)",
+    "category": "room",
+    "routeOrItem": "Backpacker Hostel Dorm Bed with Locker & Wi-Fi",
+    "fairMin": 450.0,
+    "fairMax": 850.0,
+    "unit": "per night",
+    "tip": "Includes Zostel/Hosteller standard rates with clean linen and filtered water.",
+    "priceCap": 1000.0
+  },
+  {
+    "id": "fp_11",
+    "title": "Heritage / Boutique Double Room (Standard)",
+    "category": "room",
+    "routeOrItem": "Mid-range Heritage Haveli or Hillview Cottage",
+    "fairMin": 1800.0,
+    "fairMax": 3200.0,
+    "unit": "per night",
+    "tip": "Walk-in rates quoted by middlemen on street are 40% marked up for commission. Book directly or compare online.",
+    "priceCap": 4000.0
+  },
+  {
+    "id": "fp_12",
+    "title": "Goa Beachfront Cottage (Non-Peak)",
+    "category": "room",
+    "routeOrItem": "Wooden Beach Hut with attached bath",
+    "fairMin": 1200.0,
+    "fairMax": 2200.0,
+    "unit": "per night",
+    "tip": "Check plumbing and AC before paying upfront. Never pay non-refundable deposit to beach touts.",
+    "priceCap": 2800.0
+  }
+]

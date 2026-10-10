@@ -1,0 +1,68 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper validation functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isValidServiceType(type) {
+      return type in ['auto', 'taxi', 'bikeTaxi', 'guide', 'meal', 'room', 'entryTicket', 'other'];
+    }
+
+    function isSafeText(text, maxLen) {
+      return text is string &&
+             text.size() > 0 &&
+             text.size() <= maxLen &&
+             !text.matches('.*https?://.*') &&
+             !text.matches('.*www\\..*');
+    }
+
+    function isValidPrice(type, price) {
+      return price is number &&
+             price >= 10 &&
+             price <= 50000;
+    }
+
+    // 1. Community Price Reports Collection
+    match /price_reports/{reportId} {
+      // Public read of community benchmarks
+      allow read: if true;
+
+      // Create only with validated fields, rate limited, no client update/delete
+      allow create: if isAuthenticated() &&
+                       isValidServiceType(request.resource.data.serviceType) &&
+                       isValidPrice(request.resource.data.serviceType, request.resource.data.pricePaid) &&
+                       isSafeText(request.resource.data.routeOrPlace, 200) &&
+                       request.resource.data.isFlagged == false &&
+                       request.resource.data.flagCount == 0 &&
+                       request.resource.data.userId == request.auth.uid;
+
+      // Clients cannot update or delete approved reports (tamper-proof)
+      allow update, delete: if false;
+    }
+
+    // 2. Tourist Traps Collection
+    match /tourist_traps/{trapId} {
+      allow read: if true;
+      allow create: if isAuthenticated() &&
+                       isSafeText(request.resource.data.description, 500) &&
+                       request.resource.data.severity >= 1 &&
+                       request.resource.data.severity <= 5;
+      allow update, delete: if false;
+    }
+
+    // 3. Takedown Appeals Collection (defamation safety)
+    match /takedown_appeals/{appealId} {
+      allow read: if false; // Private to compliance moderators
+      allow create: if isSafeText(request.resource.data.entityName, 100) &&
+                       isSafeText(request.resource.data.details, 500);
+      allow update, delete: if false;
+    }
+
+    // Block all other collections by default (least privilege principle)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

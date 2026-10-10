@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  
+  <title>Travel Buddy | Fair Price Travel Companion India</title>
+  <meta name="description" content="Tourists get overcharged everywhere. Travel Buddy tells you the fair price before you pay. Real transport costs, scam heatmaps, and verified drivers across India.">
+  <meta name="theme-color" content="#0D9488">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.googleapis.com https://*.google.com https://*.gstatic.com; connect-src 'self' http://localhost:8080 http://127.0.0.1:8080 https://*.googleapis.com https://*.firebaseio.com; object-src 'none';">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Travel Buddy - Fair Price Travel Companion India">
+  <meta property="og:description" content="Know what everything should really cost in India. Fair prices, scam heatmaps, and verified local drivers.">
+  <meta property="og:image" content="icons/Icon-512.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:title" content="Travel Buddy - Fair Price Travel Companion India">
+  <meta property="twitter:description" content="Know what everything should really cost in India. Fair prices, scam heatmaps, and verified local drivers.">
+  <meta property="twitter:image" content="icons/Icon-512.png">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Travel Buddy">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #0F172A;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #loading-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: #F8FAFC;
+    }
+    .logo-container {
+      width: 72px;
+      height: 72px;
+      background: linear-gradient(135deg, #0D9488, #14B8A6);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(13, 148, 136, 0.4);
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .logo-symbol {
+      font-size: 36px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+    .title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 13px;
+      color: #94A3B8;
+      letter-spacing: 0.2px;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(13, 148, 136, 0.2);
+      border-top-color: #14B8A6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-top: 8px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+  </style>
+</head>
+<body>
+  <div id="loading-indicator">
+    <div class="logo-container">
+      <span class="logo-symbol">₹</span>
+    </div>
+    <div class="title">Travel Buddy</div>
+    <div class="subtitle">Fair Prices & Scam Defense for India</div>
+    <div class="spinner"></div>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

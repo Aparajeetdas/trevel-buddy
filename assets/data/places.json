@@ -1,0 +1,806 @@
+[
+  {
+    "id": "plc_1",
+    "name": "Jaipur (Pink City)",
+    "state": "Rajasthan",
+    "category": "Best places",
+    "coverPhoto": "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&auto=format&fit=crop&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1603288940300-344498308678?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1599661046289-e31897846e41?w=800&auto=format&fit=crop&q=80"
+    ],
+    "rating": 4.8,
+    "reviewsCount": 2420,
+    "scamRisk": "Medium",
+    "bestTimeToVisit": "October to March (15°C - 28°C)",
+    "latitude": 26.9124,
+    "longitude": 75.7873,
+    "description": "The capital of Rajasthan, famous for royal palaces, vibrant bazaars, Amer Fort, and intricate terracotta architecture.",
+    "transportOptions": [
+      {
+        "id": "t_j1",
+        "mode": "bus",
+        "title": "Low Floor AC City Bus (Route 5 / 9A)",
+        "fairMin": 25.0,
+        "fairMax": 40.0,
+        "dontPayMoreThan": 50.0,
+        "pickupPoint": "Sindhi Camp Bus Stand / Railway Station",
+        "travelTime": "35-45 mins",
+        "roadCondition": "Smooth paved multilane city roads",
+        "tip": "Tickets are strictly cash or Chalo Card. Collect physical conductor receipt."
+      },
+      {
+        "id": "t_j2",
+        "mode": "shared_taxi",
+        "title": "Shared Jeep / Tata Magic to Amer",
+        "fairMin": 30.0,
+        "fairMax": 50.0,
+        "dontPayMoreThan": 60.0,
+        "pickupPoint": "Hawa Mahal Circle / Badi Choupad",
+        "travelTime": "25 mins",
+        "roadCondition": "Good highway condition with occasional hill traffic",
+        "tip": "Leaves every 5 minutes when fully seated. Fixed rate per seat."
+      },
+      {
+        "id": "t_j3",
+        "mode": "private_car",
+        "title": "Full Day AC Cab (8 Hrs / 80 Km)",
+        "fairMin": 1600.0,
+        "fairMax": 2200.0,
+        "dontPayMoreThan": 2500.0,
+        "pickupPoint": "Hotel doorstep pickup",
+        "travelTime": "Flexible full day tour",
+        "roadCondition": "Excellent city & hill ascent",
+        "tip": "Agree in writing: toll & parking included or extra. State strictly 'no shopping emporiums'."
+      },
+      {
+        "id": "t_j4",
+        "mode": "bike",
+        "title": "Self-drive 110cc Scooter Rental",
+        "fairMin": 350.0,
+        "fairMax": 500.0,
+        "dontPayMoreThan": 600.0,
+        "pickupPoint": "MI Road / Sindhi Camp rental hubs",
+        "travelTime": "Self-paced",
+        "roadCondition": "Heavy bazaar traffic, wear helmet mandatory",
+        "tip": "Take a 360-degree video of scratches before taking delivery. Deposit ₹1,000 max."
+      }
+    ],
+    "routeWarnings": [
+      {
+        "id": "rw_j1",
+        "title": "Ghat Ki Guni Tunnel Peak Congestion",
+        "severity": "warning",
+        "description": "Heavy bottle-neck between 5 PM and 8 PM towards Agra Road. Expect +25 min delay.",
+        "affectedRoute": "Jaipur City -> Sisodia Rani Garden / Agra Highway"
+      },
+      {
+        "id": "rw_j2",
+        "title": "Auto Driver Textile Detour Pressure",
+        "severity": "danger",
+        "description": "Drivers near Hawa Mahal will insist on taking you to 'Government Handloom' with huge markups.",
+        "affectedRoute": "Badi Choupad to Amer Fort approach"
+      }
+    ],
+    "foodVenues": [
+      {
+        "id": "fv_j1",
+        "name": "Rawat Mishthan Bhandar",
+        "type": "Heritage Sweets & Savory",
+        "fairRangeMin": 40.0,
+        "fairRangeMax": 150.0,
+        "popularItems": ["Pyaaz Kachori (₹50)", "Mawa Kachori (₹60)", "Sweet Lassi (₹60)"],
+        "hygieneRating": 4.7,
+        "priceCap": 200.0
+      },
+      {
+        "id": "fv_j2",
+        "name": "LMB (Laxmi Misthan Bhandar)",
+        "type": "Pure Vegetarian Dining",
+        "fairRangeMin": 300.0,
+        "fairRangeMax": 650.0,
+        "popularItems": ["Royal Rajasthani Thali (₹550)", "Ghewar (₹220)"],
+        "hygieneRating": 4.8,
+        "priceCap": 800.0
+      }
+    ],
+    "stays": [
+      {
+        "id": "st_j1",
+        "name": "Moustache Jaipur Backpacker Hostel",
+        "category": "Hostel Dorm",
+        "fairPriceMin": 450.0,
+        "fairPriceMax": 800.0,
+        "amenities": ["Rooftop Cafe", "Lockers", "AC Dorms", "Free Wi-Fi"],
+        "priceCap": 1000.0
+      },
+      {
+        "id": "st_j2",
+        "name": "Alsisar Haveli - Heritage Sanctuary",
+        "category": "Heritage Boutique Hotel",
+        "fairPriceMin": 3500.0,
+        "fairPriceMax": 6500.0,
+        "amenities": ["Courtyard Pool", "Traditional Dining", "Heritage Architecture"],
+        "priceCap": 8000.0
+      }
+    ],
+    "scamAlerts": [
+      {
+        "id": "sa_j1",
+        "title": "Gemstone Export Parcel Scam",
+        "category": "Retail",
+        "scamRisk": "High",
+        "howToAvoid": "Never buy gems to 'mail home for tax-free profits'. It is a 100% scam with fake stones.",
+        "reportCount": 54,
+        "location": "Johari Bazaar & MI Road"
+      },
+      {
+        "id": "sa_j2",
+        "title": "Fake Monument Ticket Queues",
+        "category": "Ticketing",
+        "scamRisk": "Medium",
+        "howToAvoid": "Book tickets online directly on archaeology.rajasthan.gov.in or official ASI counters.",
+        "reportCount": 31,
+        "location": "Amer Fort Footpath"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev_j1",
+        "authorName": "David Miller",
+        "rating": 5.0,
+        "comment": "Travel Buddy saved me ₹800 on the Amer cab! The driver tried to charge ₹2,200 but the fair price card showed ₹1,400 max.",
+        "date": "2 days ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_j2",
+        "authorName": "Pooja Hegde",
+        "rating": 4.5,
+        "comment": "Spot on food prices for Rawat kachori. Don't let auto walas convince you to visit their uncle's store.",
+        "date": "1 week ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_j3",
+        "authorName": "Elena Rostova",
+        "rating": 5.0,
+        "comment": "The scam warning about fake gemstones was a lifesaver. Someone was literally befriending me at the palace to pitch that.",
+        "date": "2 weeks ago",
+        "isVerifiedBuyer": true
+      }
+    ],
+    "verifiedBusinesses": [
+      {
+        "id": "vb_j1",
+        "businessName": "Rajputana Royal Taxi Services",
+        "businessType": "Driver",
+        "ownerName": "Rajendra Prasad Sharma",
+        "vehicleOrRegNumber": "RJ 14 TA 8821",
+        "isVerified": true,
+        "trustScore": 4.9,
+        "reviewsCount": 118,
+        "services": ["Airport Transfer", "Forts Day Tour", "Pushkar Trip"],
+        "ownPrices": {
+          "City Forts Full Day": 1800.0,
+          "Airport Pickup": 450.0
+        },
+        "priceCap": 2200.0,
+        "phone": "+91 98291 43210",
+        "address": "MI Road, Pink City, Jaipur"
+      }
+    ]
+  },
+  {
+    "id": "plc_2",
+    "name": "North Goa (Calangute & Anjuna)",
+    "state": "Goa",
+    "category": "Best places",
+    "coverPhoto": "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1512343879784-a960bf40e7f2?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1587922546307-776227941871?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80"
+    ],
+    "rating": 4.7,
+    "reviewsCount": 3810,
+    "scamRisk": "High",
+    "bestTimeToVisit": "November to February (22°C - 31°C)",
+    "latitude": 15.5494,
+    "longitude": 73.7535,
+    "description": "Tropical paradise famed for golden sands, vibrant flea markets, beach shacks, water sports, and sunset vibes.",
+    "transportOptions": [
+      {
+        "id": "t_g1",
+        "mode": "bus",
+        "title": "Kadamba Shuttle Bus (Airport to Calangute)",
+        "fairMin": 150.0,
+        "fairMax": 200.0,
+        "dontPayMoreThan": 250.0,
+        "pickupPoint": "Airport Terminal Bus Bay",
+        "travelTime": "1h 15 mins",
+        "roadCondition": "Good highway across Zuari bridge",
+        "tip": "Most economical transfer. AC electric buses operated by Goa Govt."
+      },
+      {
+        "id": "t_g2",
+        "mode": "private_car",
+        "title": "Prepaid Taxi Booth (GoaMiles)",
+        "fairMin": 1200.0,
+        "fairMax": 1500.0,
+        "dontPayMoreThan": 1700.0,
+        "pickupPoint": "Inside terminal official counter",
+        "travelTime": "50 mins",
+        "roadCondition": "Smooth highway",
+        "tip": "Do not negotiate with drivers standing outside terminal doors; they charge ₹2,500."
+      },
+      {
+        "id": "t_g3",
+        "mode": "bike",
+        "title": "Activa Scooter Rental (Per 24h)",
+        "fairMin": 300.0,
+        "fairMax": 450.0,
+        "dontPayMoreThan": 600.0,
+        "pickupPoint": "Calangute circle or hostel reception",
+        "travelTime": "Self-driven",
+        "roadCondition": "Narrow village lanes, beware speed bumps",
+        "tip": "Ensure yellow commercial number plate. Private white plates get fined ₹10,000 by traffic police."
+      }
+    ],
+    "routeWarnings": [
+      {
+        "id": "rw_g1",
+        "title": "Traffic Police Random Checkpoints at Baga T-Junction",
+        "severity": "warning",
+        "description": "Strict helmet checking and breathalyzer tests. Keep driver's license with you.",
+        "affectedRoute": "Calangute to Baga Road"
+      }
+    ],
+    "foodVenues": [
+      {
+        "id": "fv_g1",
+        "name": "Fat Fish Shack & Restaurant",
+        "type": "Authentic Goan Seafood",
+        "fairRangeMin": 250.0,
+        "fairRangeMax": 650.0,
+        "popularItems": ["Goan Fish Thali (₹320)", "Prawn Balchao (₹450)", "Poi bread (₹30)"],
+        "hygieneRating": 4.6,
+        "priceCap": 800.0
+      }
+    ],
+    "stays": [
+      {
+        "id": "st_g1",
+        "name": "The Hosteller Goa Anjuna",
+        "category": "Beach Hostel",
+        "fairPriceMin": 500.0,
+        "fairPriceMax": 950.0,
+        "amenities": ["Swimming Pool", "Workation Desks", "Cafe", "Game Room"],
+        "priceCap": 1200.0
+      }
+    ],
+    "scamAlerts": [
+      {
+        "id": "sa_g1",
+        "title": "Water Sports Package Bait & Switch",
+        "category": "Water Sports",
+        "scamRisk": "High",
+        "howToAvoid": "Book through registered counters. Refuse touts who cut parasailing to 30 seconds after payment.",
+        "reportCount": 68,
+        "location": "Baga Beach Shore"
+      },
+      {
+        "id": "sa_g2",
+        "title": "Fake Scooter Damage Claims",
+        "category": "Rentals",
+        "scamRisk": "High",
+        "howToAvoid": "Film an HD walkaround video before handling keys. Check tire tread and mirror joints.",
+        "reportCount": 47,
+        "location": "Candolim Beach Road"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev_g1",
+        "authorName": "Karan Varma",
+        "rating": 5.0,
+        "comment": "Used the driver verification on our taxi from airport. Confirmed he was legit with 0 complaints.",
+        "date": "3 days ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_g2",
+        "authorName": "Sarah Jenkins",
+        "rating": 4.8,
+        "comment": "The scooter video tip saved us ₹2,000! The rental guy pointed at an existing scratch and we had proof.",
+        "date": "1 week ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_g3",
+        "authorName": "Arjun Nair",
+        "rating": 4.5,
+        "comment": "Fish thali prices were 100% accurate. Avoided the beach shack rip-offs.",
+        "date": "3 weeks ago",
+        "isVerifiedBuyer": true
+      }
+    ],
+    "verifiedBusinesses": [
+      {
+        "id": "vb_g1",
+        "businessName": "Fernandez Coastal Cabs",
+        "businessType": "Driver",
+        "ownerName": "Ramesh Fernandez",
+        "vehicleOrRegNumber": "GA 03 T 4452",
+        "isVerified": true,
+        "trustScore": 4.8,
+        "reviewsCount": 84,
+        "services": ["North-South Goa Transfers", "Airport Drop", "Dudhsagar Waterfalls"],
+        "ownPrices": {
+          "Airport to Calangute": 1400.0,
+          "Full Day South Goa": 2600.0
+        },
+        "priceCap": 3000.0,
+        "phone": "+91 98221 77412",
+        "address": "Calangute Beach Road, Goa"
+      }
+    ]
+  },
+  {
+    "id": "plc_3",
+    "name": "Manali (Himalayan Valley)",
+    "state": "Himachal Pradesh",
+    "category": "Viewpoints",
+    "coverPhoto": "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&auto=format&fit=crop&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1626621341517-bbf3d9990a23?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1596701062351-8c2c14d1fdd0?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1586861635167-e5223aadc9fe?w=800&auto=format&fit=crop&q=80"
+    ],
+    "rating": 4.9,
+    "reviewsCount": 1940,
+    "scamRisk": "Medium",
+    "bestTimeToVisit": "March to June (Summer) or Dec to Feb (Snow)",
+    "latitude": 32.2432,
+    "longitude": 77.1892,
+    "description": "High-altitude Himalayan resort town nestled on the Beas River, gateway to skiing in Solang Valley and Rohtang Pass.",
+    "transportOptions": [
+      {
+        "id": "t_m1",
+        "mode": "bus",
+        "title": "HRTC Electric Mountain Bus",
+        "fairMin": 30.0,
+        "fairMax": 60.0,
+        "dontPayMoreThan": 75.0,
+        "pickupPoint": "Manali New Bus Stand",
+        "travelTime": "45 mins to Solang",
+        "roadCondition": "Hilly terrain, well maintained asphalt",
+        "tip": "Operated regularly by state transport. Clean and eco-friendly."
+      },
+      {
+        "id": "t_m2",
+        "mode": "private_car",
+        "title": "Union Taxi (Solang & Atal Tunnel Circuit)",
+        "fairMin": 2200.0,
+        "fairMax": 2800.0,
+        "dontPayMoreThan": 3200.0,
+        "pickupPoint": "Mall Road Union Stand",
+        "travelTime": "5-6 hours round trip",
+        "roadCondition": "Snow clearing active, carry chains in winter",
+        "tip": "Check the printed union tariff sheet displayed on the notice board outside the union office."
+      },
+      {
+        "id": "t_m3",
+        "mode": "bike",
+        "title": "Royal Enfield Himalayan 411cc Rental",
+        "fairMin": 1100.0,
+        "fairMax": 1500.0,
+        "dontPayMoreThan": 1800.0,
+        "pickupPoint": "Old Manali bridge rental strip",
+        "travelTime": "Full day ride",
+        "roadCondition": "Curving mountain roads, steep gradient",
+        "tip": "Inspect clutch play and disc brakes. Fuel stations close early in mountain passes."
+      }
+    ],
+    "routeWarnings": [
+      {
+        "id": "rw_m1",
+        "title": "Black Ice Warning near Atal Tunnel South Portal",
+        "severity": "danger",
+        "description": "Sub-zero temperatures in mornings cause invisible black ice. Drive below 30 km/h.",
+        "affectedRoute": "Solang to Atal Tunnel North Portal"
+      }
+    ],
+    "foodVenues": [
+      {
+        "id": "fv_m1",
+        "name": "Cafe 1947 & Riverside Lounge",
+        "type": "Mountain Cafe & Italian",
+        "fairRangeMin": 200.0,
+        "fairRangeMax": 550.0,
+        "popularItems": ["Woodfired Trout Pizza (₹480)", "Hot Chocolate (₹160)", "Trout Curry (₹520)"],
+        "hygieneRating": 4.8,
+        "priceCap": 750.0
+      }
+    ],
+    "stays": [
+      {
+        "id": "st_m1",
+        "name": "Zostel Old Manali",
+        "category": "Backpacker Mountain Hostel",
+        "fairPriceMin": 550.0,
+        "fairPriceMax": 950.0,
+        "amenities": ["Apple Orchard Views", "Bonfire", "High Speed Wi-Fi", "Board Games"],
+        "priceCap": 1100.0
+      }
+    ],
+    "scamAlerts": [
+      {
+        "id": "sa_m1",
+        "title": "Snow Suit Forced Rental Highway Racket",
+        "category": "Rentals",
+        "scamRisk": "High",
+        "howToAvoid": "Stalls claim snow dress is mandatory for Rohtang/Solang by law. This is FALSE. Wear warm clothes.",
+        "reportCount": 85,
+        "location": "Palchan / Solang Roadside Stalls"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev_m1",
+        "authorName": "Rohan Deshmukh",
+        "rating": 5.0,
+        "comment": "Saved ₹1,600 on snow dresses! Driver stopped at a shack claiming entry banned without suit. Showed him this app.",
+        "date": "4 days ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_m2",
+        "authorName": "Chloé Bernard",
+        "rating": 5.0,
+        "comment": "Atal tunnel black ice warning was very helpful. Surinder was a great verified driver.",
+        "date": "2 weeks ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_m3",
+        "authorName": "Tenzing Norbu",
+        "rating": 4.7,
+        "comment": "Reliable bike rental rates. Don't pay extra security deposit.",
+        "date": "1 month ago",
+        "isVerifiedBuyer": true
+      }
+    ],
+    "verifiedBusinesses": [
+      {
+        "id": "vb_m1",
+        "businessName": "Himalayan High Passes Taxi Union",
+        "businessType": "Driver",
+        "ownerName": "Surinder Thakur",
+        "vehicleOrRegNumber": "HP 01 UA 3190",
+        "isVerified": true,
+        "trustScore": 4.95,
+        "reviewsCount": 142,
+        "services": ["Rohtang Pass", "Atal Tunnel & Sissu", "Kasol Drops"],
+        "ownPrices": {
+          "Solang & Atal Tunnel": 2400.0,
+          "Rohtang Pass Day Trip": 3400.0
+        },
+        "priceCap": 3800.0,
+        "phone": "+91 94180 55198",
+        "address": "Mall Road Taxi Stand, Manali"
+      }
+    ]
+  },
+  {
+    "id": "plc_4",
+    "name": "Varanasi (Spiritual Capital)",
+    "state": "Uttar Pradesh",
+    "category": "Nearby",
+    "coverPhoto": "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=800&auto=format&fit=crop&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1561361513-2d000a50f0dc?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1571536802807-30451e3955d8?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1594897030560-95a5cf7d0522?w=800&auto=format&fit=crop&q=80"
+    ],
+    "rating": 4.8,
+    "reviewsCount": 2890,
+    "scamRisk": "High",
+    "bestTimeToVisit": "October to March (12°C - 26°C)",
+    "latitude": 25.3176,
+    "longitude": 82.9739,
+    "description": "One of the world's oldest continuously inhabited cities. Famous for mystical Ganga Ghats, evening Aarti, and silk weaving.",
+    "transportOptions": [
+      {
+        "id": "t_v1",
+        "mode": "bus",
+        "title": "City Electric AC Mini Bus (JNNURM)",
+        "fairMin": 20.0,
+        "fairMax": 35.0,
+        "dontPayMoreThan": 45.0,
+        "pickupPoint": "Varanasi Junction Cantt Station",
+        "travelTime": "30 mins to Godowlia",
+        "roadCondition": "Dense old city traffic, pedestrian only near ghats",
+        "tip": "Stops at Godowlia Chowk. Vehicles cannot enter beyond Godowlia toward Ghats."
+      },
+      {
+        "id": "t_v2",
+        "mode": "shared_taxi",
+        "title": "Cycle Rickshaw (Traditional Alley Hop)",
+        "fairMin": 40.0,
+        "fairMax": 70.0,
+        "dontPayMoreThan": 90.0,
+        "pickupPoint": "Godowlia to Dashashwamedh or Assi",
+        "travelTime": "15 mins",
+        "roadCondition": "Narrow brick cobbled alleys",
+        "tip": "Agree on total fare for all passengers, not per passenger."
+      },
+      {
+        "id": "t_v3",
+        "mode": "private_car",
+        "title": "Sunrise Rowing Boat (1 Hour Ghat Cruise)",
+        "fairMin": 300.0,
+        "fairMax": 500.0,
+        "dontPayMoreThan": 700.0,
+        "pickupPoint": "Assi Ghat or Dashashwamedh Ghat steps",
+        "travelTime": "1 hour on river",
+        "roadCondition": "River waterway",
+        "tip": "Government boat rates: ₹150 for shared motorboat, ₹400-500 private hand-rowed boat. Touts demand ₹2,000."
+      }
+    ],
+    "routeWarnings": [
+      {
+        "id": "rw_v1",
+        "title": "No Motor Vehicles inside Godowlia-Ghat Zone",
+        "severity": "info",
+        "description": "Strict barricade after 9 AM to 9 PM. Only walking and authorized rickshaws allowed.",
+        "affectedRoute": "Godowlia Chowk to Dashashwamedh Ghat"
+      }
+    ],
+    "foodVenues": [
+      {
+        "id": "fv_v1",
+        "name": "Blue Lassi Shop & Kashi Chaat",
+        "type": "Heritage Lassi & Chaat",
+        "fairRangeMin": 50.0,
+        "fairRangeMax": 150.0,
+        "popularItems": ["Tamatar Chaat (₹50)", "Pomegranate Rabri Lassi (₹80)", "Kachori Jalebi (₹40)"],
+        "hygieneRating": 4.5,
+        "priceCap": 200.0
+      }
+    ],
+    "stays": [
+      {
+        "id": "st_v1",
+        "name": "Brijrama Palace - Heritage on the Ghats",
+        "category": "Heritage Riverside Palace",
+        "fairPriceMin": 8000.0,
+        "fairPriceMax": 16000.0,
+        "amenities": ["Private Boat Access", "River View Balcony", "Cultural Music"],
+        "priceCap": 20000.0
+      }
+    ],
+    "scamAlerts": [
+      {
+        "id": "sa_v1",
+        "title": "Manikarnika Cremation Wood Donation Hustle",
+        "category": "Charity Scam",
+        "scamRisk": "High",
+        "howToAvoid": "Never give cash to people asking money to 'buy firewood for the poor'. It goes directly to syndicates.",
+        "reportCount": 110,
+        "location": "Manikarnika Ghat Cremation Point"
+      },
+      {
+        "id": "sa_v2",
+        "title": "Fake Silk Factory Weaver Walk",
+        "category": "Shopping",
+        "scamRisk": "High",
+        "howToAvoid": "Rickshaw pullers offering free ride to 'real cottage weaver'. Real sarees don't sell for ₹500.",
+        "reportCount": 78,
+        "location": "Madanpura & Chowk Alleys"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev_v1",
+        "authorName": "Michael Scott",
+        "rating": 5.0,
+        "comment": "The boat price guide saved us from paying ₹2,500. Got a private boat for ₹450 just like the app said.",
+        "date": "Yesterday",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_v2",
+        "authorName": "Suniti Banerjee",
+        "rating": 4.8,
+        "comment": "Tamatar chaat is heavenly! Great price guidance for Varanasi alleys.",
+        "date": "1 week ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_v3",
+        "authorName": "Fabian Meier",
+        "rating": 4.9,
+        "comment": "Warned me about the cremation wood scam. Two guys approached me exactly as described.",
+        "date": "3 weeks ago",
+        "isVerifiedBuyer": true
+      }
+    ],
+    "verifiedBusinesses": [
+      {
+        "id": "vb_v1",
+        "businessName": "Ganga Aarti Eco Boats",
+        "businessType": "Driver",
+        "ownerName": "Santosh Tiwari",
+        "vehicleOrRegNumber": "UP 65 CR 4310",
+        "isVerified": true,
+        "trustScore": 4.7,
+        "reviewsCount": 96,
+        "services": ["Sunrise Rowing Boat", "Evening Aarti Float", "Chunar Fort Ferry"],
+        "ownPrices": {
+          "Sunrise Boat (1h)": 400.0,
+          "Aarti Boat (1.5h)": 500.0
+        },
+        "priceCap": 650.0,
+        "phone": "+91 94500 88912",
+        "address": "Assi Ghat Riverfront, Varanasi"
+      }
+    ]
+  },
+  {
+    "id": "plc_5",
+    "name": "Agra (City of the Taj)",
+    "state": "Uttar Pradesh",
+    "category": "Budget",
+    "coverPhoto": "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&auto=format&fit=crop&q=80",
+    "gallery": [
+      "https://images.unsplash.com/photo-1564507592333-c60657eea523?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1548013146-72479768bada?w=800&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1585135497273-1a86b09fe70e?w=800&auto=format&fit=crop&q=80"
+    ],
+    "rating": 4.9,
+    "reviewsCount": 4120,
+    "scamRisk": "High",
+    "bestTimeToVisit": "October to March (10°C - 25°C, Friday Closed)",
+    "latitude": 27.1751,
+    "longitude": 78.0421,
+    "description": "Home to the iconic white marble Taj Mahal, Agra Fort, and rich Mughal history along the banks of River Yamuna.",
+    "transportOptions": [
+      {
+        "id": "t_a1",
+        "mode": "bus",
+        "title": "Green Electric Taj Shuttle",
+        "fairMin": 10.0,
+        "fairMax": 20.0,
+        "dontPayMoreThan": 25.0,
+        "pickupPoint": "Shilpgram Parking (East Gate)",
+        "travelTime": "10 mins",
+        "roadCondition": "Clean battery vehicle corridor (pollution-free zone)",
+        "tip": "Fuel vehicles are prohibited within 500 meters of the Taj Mahal. Take the govt electric cart."
+      },
+      {
+        "id": "t_a2",
+        "mode": "shared_taxi",
+        "title": "CNG Auto Rickshaw (Agra Cantt to Taj)",
+        "fairMin": 120.0,
+        "fairMax": 180.0,
+        "dontPayMoreThan": 220.0,
+        "pickupPoint": "Agra Cantt Railway Station Exit",
+        "travelTime": "20 mins",
+        "roadCondition": "Good asphalt road",
+        "tip": "Prepaid auto booth is right on platform 1 exit. Always get a receipt slips."
+      },
+      {
+        "id": "t_a3",
+        "mode": "private_car",
+        "title": "AC Sedan Day Sightseeing (Taj + Fort + Fatehpur)",
+        "fairMin": 1800.0,
+        "fairMax": 2400.0,
+        "dontPayMoreThan": 2800.0,
+        "pickupPoint": "Hotel doorstep",
+        "travelTime": "8 hours comprehensive tour",
+        "roadCondition": "Expressway and 4-lane highway",
+        "tip": "Drivers get 30% commission at souvenir emporiums. Tell driver you only want historical sights."
+      }
+    ],
+    "routeWarnings": [
+      {
+        "id": "rw_a1",
+        "title": "Taj Mahal is CLOSED Every Friday",
+        "severity": "danger",
+        "description": "Touts will claim it's open through secret VIP doors. It is legally closed for prayers.",
+        "affectedRoute": "All approaches to Taj Mahal Gates on Fridays"
+      }
+    ],
+    "foodVenues": [
+      {
+        "id": "fv_a1",
+        "name": "Panchi Petha & Dasaprakash",
+        "type": "Authentic Sweets & Mughal Dining",
+        "fairRangeMin": 80.0,
+        "fairRangeMax": 350.0,
+        "popularItems": ["Angoori Petha (₹120/box)", "Bedmi Puri Breakfast (₹60)", "Mughlai Kebab (₹280)"],
+        "hygieneRating": 4.7,
+        "priceCap": 450.0
+      }
+    ],
+    "stays": [
+      {
+        "id": "st_a1",
+        "name": "Joey's Hostel Agra (Rooftop Taj View)",
+        "category": "Backpacker Hostel",
+        "fairPriceMin": 400.0,
+        "fairPriceMax": 750.0,
+        "amenities": ["Direct Taj View Terrace", "Cafe", "Lockers", "AC"],
+        "priceCap": 900.0
+      }
+    ],
+    "scamAlerts": [
+      {
+        "id": "sa_a1",
+        "title": "'Taj Mahal is Closed Today' Diversion Scam",
+        "category": "Diversion",
+        "scamRisk": "High",
+        "howToAvoid": "Except Fridays, Taj Mahal is open from sunrise to sunset. Never believe drivers who say it is closed.",
+        "reportCount": 94,
+        "location": "Agra Cantt Railway Station & Highway exits"
+      },
+      {
+        "id": "sa_a2",
+        "title": "Fake Marble Inlay Demonstration Trap",
+        "category": "Shopping",
+        "scamRisk": "High",
+        "howToAvoid": "Cheap soapstone is sold as rare Italian marble with fake gems at 10x price.",
+        "reportCount": 61,
+        "location": "Fatehabad Road Showrooms"
+      }
+    ],
+    "reviews": [
+      {
+        "id": "rev_a1",
+        "authorName": "Kavita Singhal",
+        "rating": 5.0,
+        "comment": "Driver told us Taj was closed for VIP event! Checked Travel Buddy and immediately knew he was lying.",
+        "date": "3 days ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_a2",
+        "authorName": "Marcus Bell",
+        "rating": 4.9,
+        "comment": "Prepaid auto was ₹150. Outside touts wanted ₹600. Great app for first-timers in India.",
+        "date": "1 week ago",
+        "isVerifiedBuyer": true
+      },
+      {
+        "id": "rev_a3",
+        "authorName": "Suresh Patel",
+        "rating": 4.7,
+        "comment": "The Friday closed alert saved our entire schedule from ruin.",
+        "date": "2 weeks ago",
+        "isVerifiedBuyer": true
+      }
+    ],
+    "verifiedBusinesses": [
+      {
+        "id": "vb_a1",
+        "businessName": "Heritage Agra Wheels",
+        "businessType": "Driver",
+        "ownerName": "Ramesh Kumar Gupta",
+        "vehicleOrRegNumber": "UP 80 TA 1024",
+        "isVerified": true,
+        "trustScore": 4.9,
+        "reviewsCount": 112,
+        "services": ["Taj & Agra Fort Cab", "Fatehpur Sikri Excursion", "Delhi Airport Drop"],
+        "ownPrices": {
+          "City Tour (8h)": 2000.0,
+          "Fatehpur Sikri Addon": 800.0
+        },
+        "priceCap": 2500.0,
+        "phone": "+91 94122 33445",
+        "address": "Fatehabad Road, Agra"
+      }
+    ]
+  }
+]

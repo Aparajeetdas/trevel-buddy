@@ -1,0 +1,29 @@
+[
+  {
+    "vehicleType": "bike",
+    "displayName": "Bike Taxi (Rapido / Local)",
+    "baseFare": 20.0,
+    "perKmRate": 8.0,
+    "perMinuteRate": 1.0,
+    "minimumFare": 30.0,
+    "badRoadMultiplier": 1.2
+  },
+  {
+    "vehicleType": "auto",
+    "displayName": "Auto Rickshaw (Meter / Shared)",
+    "baseFare": 30.0,
+    "perKmRate": 12.0,
+    "perMinuteRate": 1.5,
+    "minimumFare": 50.0,
+    "badRoadMultiplier": 1.25
+  },
+  {
+    "vehicleType": "cab",
+    "displayName": "AC Tourist Taxi / Cab",
+    "baseFare": 60.0,
+    "perKmRate": 18.0,
+    "perMinuteRate": 2.0,
+    "minimumFare": 100.0,
+    "badRoadMultiplier": 1.3
+  }
+]
