@@ -12,6 +12,7 @@
 .swiftpm/
 migrate_working_dir/
 .firebase/
+.vercel/
 
 # IntelliJ / VS Code
 *.iml
@@ -62,3 +63,4 @@ app.*.map.json
 
 # Widget Preview
 .widget_preview/
+.vercel
