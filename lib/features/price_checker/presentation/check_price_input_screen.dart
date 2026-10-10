@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/data/community_repository.dart';
 import '../../../../core/data/tariff_repository.dart';
 import '../../../../core/models/app_models.dart';
+import '../../../../core/services/airport_prepaid_matcher.dart';
 import '../../../../core/services/google_maps_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/pricing_engine.dart';
 import '../../../../core/widgets/app_brand_app_bar.dart';
 import 'price_check_result_screen.dart';
+import 'widgets/airport_destination_picker.dart';
 import 'widgets/price_input_adaptive_fields.dart';
 import 'widgets/price_quick_presets.dart';
 import 'widgets/price_route_autocomplete_field.dart';
@@ -16,8 +19,19 @@ import 'widgets/price_route_autocomplete_field.dart';
 /// Hero Feature: "Check a Price Before You Pay" input form with Google Places Autocomplete
 class CheckPriceInputScreen extends ConsumerStatefulWidget {
   final String? initialPlaceName;
+  final String? initialPickupName;
+  final String? initialDropName;
+  final double? initialQuotedPrice;
+  final ServiceType? initialServiceType;
 
-  const CheckPriceInputScreen({super.key, this.initialPlaceName});
+  const CheckPriceInputScreen({
+    super.key,
+    this.initialPlaceName,
+    this.initialPickupName,
+    this.initialDropName,
+    this.initialQuotedPrice,
+    this.initialServiceType,
+  });
 
   @override
   ConsumerState<CheckPriceInputScreen> createState() =>
@@ -44,10 +58,23 @@ class _CheckPriceInputScreenState extends ConsumerState<CheckPriceInputScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.initialPlaceName != null &&
-        widget.initialPlaceName!.isNotEmpty) {
-      _dropController.text = widget.initialPlaceName!;
+    if (widget.initialServiceType != null) {
+      _selectedType = widget.initialServiceType!;
     }
+    if (widget.initialPickupName != null &&
+        widget.initialPickupName!.isNotEmpty) {
+      _pickupController.text = widget.initialPickupName!;
+    }
+    final dest = widget.initialDropName ?? widget.initialPlaceName;
+    if (dest != null && dest.isNotEmpty) {
+      _dropController.text = dest;
+    }
+    if (widget.initialQuotedPrice != null) {
+      _quotedController.text = widget.initialQuotedPrice!.toStringAsFixed(0);
+    }
+    _pickupController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -91,6 +118,35 @@ class _CheckPriceInputScreenState extends ConsumerState<CheckPriceInputScreen> {
         .read(communityRepositoryProvider)
         .getPriceReports();
     final traps = await ref.read(communityRepositoryProvider).getTouristTraps();
+
+    FixedRouteTariff? fixedTariff;
+    final isAirport = AirportPrepaidMatcher.isAirportPickup(name: _pickupController.text.trim());
+    if (isAirport) {
+      final airportDataset = await ref.read(govTariffRepositoryProvider).getAirportDataset();
+      if (!mounted) return;
+      final matchResult = AirportPrepaidMatcher.matchDestination(
+        destination: _dropController.text.trim(),
+        tariffs: airportDataset.routes,
+      );
+
+      if (matchResult.status == AirportMatchStatus.ambiguous) {
+        setState(() => _isLoading = false);
+        final selected = await AirportDestinationPicker.show(
+          context,
+          query: _dropController.text.trim(),
+          candidates: matchResult.candidates,
+          isAmbiguous: true,
+        );
+        if (!mounted) return;
+        setState(() => _isLoading = true);
+        if (selected != null) {
+          _dropController.text = selected.destinationName;
+          fixedTariff = selected;
+        }
+      } else if (matchResult.status == AirportMatchStatus.confident) {
+        fixedTariff = matchResult.matchedTariff;
+      }
+    }
 
     await Future.delayed(const Duration(milliseconds: 350));
     if (!mounted) return;
@@ -139,6 +195,7 @@ class _CheckPriceInputScreenState extends ConsumerState<CheckPriceInputScreen> {
       tariff: tariff,
       reports: reports,
       traps: traps,
+      fixedTariff: fixedTariff,
     );
 
     setState(() => _isLoading = false);
@@ -169,6 +226,7 @@ class _CheckPriceInputScreenState extends ConsumerState<CheckPriceInputScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isAirportPickup = AirportPrepaidMatcher.isAirportPickup(name: _pickupController.text);
 
     return Scaffold(
       appBar: const AppBrandAppBar(
@@ -193,6 +251,59 @@ class _CheckPriceInputScreenState extends ConsumerState<CheckPriceInputScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Airport Prepaid Fixed Fare Top Banner
+                  if (isAirportPickup)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3B82F6).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF3B82F6).withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.info_outline_rounded,
+                            color: Color(0xFF2563EB),
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'The pre-paid taxi counter has fixed fares. Compare before you agree with a driver.',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF1D4ED8),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                InkWell(
+                                  onTap: () => context.push('/airport-fares'),
+                                  child: const Text(
+                                    'View all official LGBI Airport pre-paid fares →',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1D4ED8),
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   // Service Type Selector Chips
                   Text(
                     'Select Service Type',

@@ -33,6 +33,19 @@ class PriceQuickPresets extends StatelessWidget {
           runSpacing: 6,
           children: [
             ActionChip(
+              avatar: const Icon(Icons.flight_takeoff_rounded, size: 14),
+              label: const Text(
+                'Airport → Ganeshguri ₹1,200 (Scam)',
+                style: TextStyle(fontSize: 11),
+              ),
+              onPressed: () => onSelect(
+                ServiceType.taxi,
+                'LGBI Airport, Guwahati',
+                'Ganeshguri',
+                1200,
+              ),
+            ),
+            ActionChip(
               label: const Text(
                 'Jaipur Auto ₹250 (Trap)',
                 style: TextStyle(fontSize: 11),

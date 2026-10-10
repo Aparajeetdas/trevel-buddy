@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/airport_fares/presentation/airport_prepaid_fares_screen.dart';
 import '../../features/business/presentation/business_onboarding_screen.dart';
 import '../../features/business/presentation/business_profile_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
@@ -13,6 +14,7 @@ import '../../features/ride/presentation/ride_mode_screen.dart';
 import '../../features/community_reports/presentation/community_reports_screen.dart';
 import '../../features/tourist_traps/presentation/tourist_traps_screen.dart';
 import '../../features/roadmap/presentation/roadmap_screen.dart';
+import '../models/ai_price_models.dart';
 import '../models/roadmap_models.dart';
 import '../widgets/main_shell_screen.dart';
 
@@ -62,6 +64,11 @@ final GoRouter appRouter = GoRouter(
     // Full screen routes pushed on top of the root navigator (outside bottom tabs)
     GoRoute(
       parentNavigatorKey: _rootNavigatorKey,
+      path: '/airport-fares',
+      builder: (context, state) => const AirportPrepaidFaresScreen(),
+    ),
+    GoRoute(
+      parentNavigatorKey: _rootNavigatorKey,
       path: '/place/:id',
       builder: (context, state) {
         final placeId = state.pathParameters['id'] ?? 'plc_1';
@@ -72,6 +79,15 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       path: '/fair-price-checker',
       builder: (context, state) {
+        if (state.extra is Map<String, dynamic>) {
+          final m = state.extra as Map<String, dynamic>;
+          return CheckPriceInputScreen(
+            initialPickupName: m['pickup'] as String?,
+            initialDropName: (m['drop'] ?? m['destination']) as String?,
+            initialQuotedPrice: (m['quotedPrice'] as num?)?.toDouble(),
+            initialServiceType: m['serviceType'] as ServiceType?,
+          );
+        }
         final initialPlaceName = state.extra as String?;
         return CheckPriceInputScreen(initialPlaceName: initialPlaceName);
       },
@@ -80,6 +96,15 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       path: '/check-price',
       builder: (context, state) {
+        if (state.extra is Map<String, dynamic>) {
+          final m = state.extra as Map<String, dynamic>;
+          return CheckPriceInputScreen(
+            initialPickupName: m['pickup'] as String?,
+            initialDropName: (m['drop'] ?? m['destination']) as String?,
+            initialQuotedPrice: (m['quotedPrice'] as num?)?.toDouble(),
+            initialServiceType: m['serviceType'] as ServiceType?,
+          );
+        }
         final initialPlaceName = state.extra as String?;
         return CheckPriceInputScreen(initialPlaceName: initialPlaceName);
       },

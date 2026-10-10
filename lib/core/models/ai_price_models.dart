@@ -173,6 +173,176 @@ class GovTariff {
   );
 }
 
+/// Official Fixed-Route Tariff (e.g. LGBI Airport Prepaid Taxi)
+class FixedRouteTariff {
+  final String origin;
+  final String destinationName;
+  final String? destinationNameHi;
+  final List<String> aliases;
+  final double km;
+  final double fare;
+  final String category; // 'Local', 'Long distance', 'Out of state'
+  final List<String> flags; // e.g. ['check_against_printed_list']
+  final String source;
+  final DateTime? effectiveDate;
+  final bool verified;
+
+  const FixedRouteTariff({
+    required this.origin,
+    required this.destinationName,
+    this.destinationNameHi,
+    this.aliases = const [],
+    required this.km,
+    required this.fare,
+    required this.category,
+    this.flags = const [],
+    required this.source,
+    this.effectiveDate,
+    this.verified = true,
+  });
+
+  String? get nameHi => destinationNameHi;
+
+  Map<String, dynamic> toJson() => {
+    'origin': origin,
+    'destinationName': destinationName,
+    'destinationNameHi': destinationNameHi,
+    'aliases': aliases,
+    'km': km,
+    'fare': fare,
+    'category': category,
+    'flags': flags,
+    'source': source,
+    'effectiveDate': effectiveDate?.toIso8601String(),
+    'verified': verified,
+  };
+
+  factory FixedRouteTariff.fromJson(
+    Map<String, dynamic> json, {
+    String defaultOrigin = 'LGBI Airport, Guwahati',
+    String defaultSource = 'LGBI Airport Pre-paid Taxi Counter, Guwahati',
+    DateTime? defaultEffectiveDate,
+    bool defaultVerified = true,
+  }) {
+    final dest = (json['destinationName'] ??
+            json['destination'] ??
+            json['name'] ??
+            '')
+        .toString();
+    final destHi = (json['destinationNameHi'] ??
+            json['nameHi'] ??
+            json['destinationHi'])
+        ?.toString();
+
+    final rawAliases = json['aliases'] as List<dynamic>?;
+    final aliases =
+        rawAliases?.map((e) => e.toString()).toList() ?? <String>[];
+
+    final List<String> flags = [];
+    if (json['flags'] is List) {
+      flags.addAll((json['flags'] as List<dynamic>).map((e) => e.toString()));
+    } else if (json['flag'] != null && json['flag'].toString().isNotEmpty) {
+      flags.add(json['flag'].toString());
+    }
+
+    DateTime? effDate;
+    if (json['effectiveDate'] != null) {
+      effDate = DateTime.tryParse(json['effectiveDate'].toString());
+    } else {
+      effDate = defaultEffectiveDate;
+    }
+
+    return FixedRouteTariff(
+      origin: (json['origin'] as String?) ?? defaultOrigin,
+      destinationName: dest,
+      destinationNameHi: destHi,
+      aliases: aliases,
+      km: (json['km'] as num?)?.toDouble() ?? 0.0,
+      fare: (json['fare'] as num?)?.toDouble() ?? 0.0,
+      category: (json['category'] as String?) ?? 'Local',
+      flags: flags,
+      source: (json['source'] as String?) ?? defaultSource,
+      effectiveDate: effDate,
+      verified: (json['verified'] as bool?) ?? defaultVerified,
+    );
+  }
+
+  double get ratePerKm => km > 0 ? (fare / km) : 0.0;
+  bool get hasFlagCheckPrintedList =>
+      flags.contains('check_against_printed_list');
+}
+
+/// Container for airport prepaid fare dataset
+class AirportPrepaidFareDataset {
+  final String source;
+  final DateTime? effectiveDate;
+  final bool verified;
+  final String origin;
+  final double originLat;
+  final double originLng;
+  final double baseFare;
+  final double perKmRate;
+  final List<FixedRouteTariff> routes;
+
+  const AirportPrepaidFareDataset({
+    required this.source,
+    this.effectiveDate,
+    required this.verified,
+    required this.origin,
+    this.originLat = 26.1061,
+    this.originLng = 91.5859,
+    this.baseFare = 200.0,
+    this.perKmRate = 24.0,
+    required this.routes,
+  });
+
+  factory AirportPrepaidFareDataset.fromJson(Map<String, dynamic> json) {
+    final source =
+        json['source'] as String? ??
+        'LGBI Airport Pre-paid Taxi Counter, Guwahati';
+    final effDate = json['effectiveDate'] != null
+        ? DateTime.tryParse(json['effectiveDate'].toString())
+        : null;
+    final verified = (json['verified'] as bool?) ?? true;
+    final origin = json['origin'] as String? ?? 'LGBI Airport, Guwahati';
+    final originCoords = json['originCoordinates'] as Map<String, dynamic>?;
+    final lat = (originCoords?['lat'] as num?)?.toDouble() ??
+        (json['originLat'] as num?)?.toDouble() ??
+        26.1061;
+    final lng = (originCoords?['lng'] as num?)?.toDouble() ??
+        (json['originLng'] as num?)?.toDouble() ??
+        91.5859;
+    final baseFare = (json['baseFare'] as num?)?.toDouble() ?? 200.0;
+    final perKmRate = (json['perKmRate'] as num?)?.toDouble() ?? 24.0;
+
+    final rawRoutes =
+        (json['routes'] ?? json['fares'] ?? json['tariffs']) as List<dynamic>? ??
+            [];
+    final routes = rawRoutes
+        .map((r) => FixedRouteTariff.fromJson(
+              r as Map<String, dynamic>,
+              defaultOrigin: origin,
+              defaultSource: source,
+              defaultEffectiveDate: effDate,
+              defaultVerified: verified,
+            ))
+        .toList();
+
+    return AirportPrepaidFareDataset(
+      source: source,
+      effectiveDate: effDate,
+      verified: verified,
+      origin: origin,
+      originLat: lat,
+      originLng: lng,
+      baseFare: baseFare,
+      perKmRate: perKmRate,
+      routes: routes,
+    );
+  }
+}
+
+
 /// Community-submitted Price Report
 class PriceReport {
   final String id;

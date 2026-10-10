@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../constants/price_thresholds.dart';
 import '../models/app_models.dart';
+import '../services/airport_prepaid_matcher.dart';
 import 'engine_math.dart';
 
 /// Deterministic, testable AI Price Intelligence Engine
@@ -11,13 +12,43 @@ class PricingEngine {
   static PriceCheckResult evaluate({
     required PriceCheckInput input,
     GovTariff? tariff,
+    FixedRouteTariff? fixedRouteTariff,
+    FixedRouteTariff? fixedTariff,
+    bool isAirportTrip = false,
+    bool isToAirport = false,
+    double airportBaseFare = 200.0,
+    double airportPerKmRate = 24.0,
     List<PriceReport> reports = const [],
     List<TouristTrap> traps = const [],
     List<String> knownReportedEntities = const [],
   }) {
+    final activeFixedTariff = fixedRouteTariff ?? fixedTariff;
     // 1. Calculate effective distance and travel duration
     final double distanceKm = _resolveDistance(input);
     final double durationMinutes = _resolveDuration(input, distanceKm);
+
+    // Detect airport trips and direction
+    final bool detectedPickupAirport = AirportPrepaidMatcher.isAirportPickup(
+      lat: input.pickupLat,
+      lng: input.pickupLng,
+      name: input.pickupName,
+    );
+    final bool detectedDropAirport = AirportPrepaidMatcher.isAirportDropoff(
+      lat: input.dropLat,
+      lng: input.dropLng,
+      name: input.dropName,
+    );
+
+    final bool tripIsToAirport = isToAirport || detectedDropAirport;
+    final bool tripIsFromAirport = (isAirportTrip && !isToAirport) ||
+        detectedPickupAirport ||
+        (activeFixedTariff != null && !tripIsToAirport);
+
+    final bool useAirportDerivedEstimate =
+        (tripIsToAirport || (tripIsFromAirport && activeFixedTariff == null)) &&
+        (input.serviceType == ServiceType.taxi ||
+            input.serviceType == ServiceType.auto ||
+            input.serviceType == ServiceType.other);
 
     // 2. Compute Official Tariff Fare (if present)
     double? officialFare;
@@ -25,7 +56,29 @@ class PricingEngine {
     double? officialMax;
     PriceCheckSource? officialSource;
 
-    if (tariff != null) {
+    if (activeFixedTariff != null && !tripIsToAirport) {
+      officialFare = activeFixedTariff.fare;
+      officialMin = activeFixedTariff.fare;
+      officialMax = activeFixedTariff.fare;
+
+      final String dateStr = activeFixedTariff.effectiveDate != null
+          ? activeFixedTariff.effectiveDate!.toIso8601String().split('T').first
+          : 'effective date not stated';
+      final String dateNote = activeFixedTariff.effectiveDate == null
+          ? ' • effective date not stated'
+          : '';
+
+      officialSource = PriceCheckSource(
+        type: 'official',
+        amount: activeFixedTariff.fare,
+        minAmount: activeFixedTariff.fare,
+        maxAmount: activeFixedTariff.fare,
+        sourceName: activeFixedTariff.source,
+        effectiveDate: dateStr,
+        details:
+            'Official prepaid fare Rs ${activeFixedTariff.fare.round()} (about ${activeFixedTariff.km.round()} km)$dateNote',
+      );
+    } else if (!useAirportDerivedEstimate && tariff != null) {
       officialFare = _calculateTariffFare(
         tariff,
         input,
@@ -73,27 +126,54 @@ class PricingEngine {
       }
     }
 
-    // 4. Model Estimate fallback
-    final double modelEstimate = _calculateModelEstimate(input, distanceKm);
-    final double estimateMin =
-        (modelEstimate * PriceThresholds.estimateFairMinMultiplier)
-            .roundToDouble();
-    final double estimateMax =
-        (modelEstimate * PriceThresholds.estimateFairMaxMultiplier)
-            .roundToDouble();
-    final estimateSource = PriceCheckSource(
-      type: 'estimate',
-      amount: modelEstimate,
-      minAmount: estimateMin,
-      maxAmount: estimateMax,
-      sourceName: 'Travel Buddy Pricing Model',
-      details: 'Statistical baseline calculated from local mobility indices',
-    );
+    // 4. Model Estimate or Airport Derived Estimate
+    final PriceCheckSource estimateSource;
+    final double estimateMin;
+    final double estimateMax;
 
-    // 5. Determine Fair Range (Priority: Tariff -> Community -> Model Estimate)
+    if (useAirportDerivedEstimate) {
+      // derivedEstimate = base + perKm x route distance from Routes API
+      final double derivedFare =
+          (airportBaseFare + (airportPerKmRate * distanceKm)).roundToDouble();
+      estimateMin = (derivedFare * 0.90).roundToDouble();
+      estimateMax = (derivedFare * 1.10).roundToDouble();
+
+      estimateSource = PriceCheckSource(
+        type: 'estimate', // Never official!
+        amount: derivedFare,
+        minAmount: estimateMin,
+        maxAmount: estimateMax,
+        sourceName: 'Estimated from airport prepaid rates',
+        details: tripIsToAirport
+            ? 'Trip to airport: Estimated from airport prepaid rates (₹${airportBaseFare.round()} base + ₹${airportPerKmRate.round()}/km)'
+            : 'Destination not listed: Estimated from airport prepaid rates (₹${airportBaseFare.round()} base + ₹${airportPerKmRate.round()}/km)',
+      );
+    } else {
+      final double modelEstimate = _calculateModelEstimate(input, distanceKm);
+      estimateMin = (modelEstimate * PriceThresholds.estimateFairMinMultiplier)
+          .roundToDouble();
+      estimateMax = (modelEstimate * PriceThresholds.estimateFairMaxMultiplier)
+          .roundToDouble();
+      estimateSource = PriceCheckSource(
+        type: 'estimate',
+        amount: modelEstimate,
+        minAmount: estimateMin,
+        maxAmount: estimateMax,
+        sourceName: 'Travel Buddy Pricing Model',
+        details: 'Statistical baseline calculated from local mobility indices',
+      );
+    }
+
+    // 5. Determine Fair Range (Priority: Fixed-Route Tariff -> Airport Derived Estimate -> Gov Tariff -> Community -> Model Estimate)
     final double fairMin;
     final double fairMax;
-    if (officialMin != null && officialMax != null) {
+    if (activeFixedTariff != null && !tripIsToAirport) {
+      fairMin = activeFixedTariff.fare;
+      fairMax = activeFixedTariff.fare;
+    } else if (useAirportDerivedEstimate) {
+      fairMin = estimateMin;
+      fairMax = estimateMax;
+    } else if (officialMin != null && officialMax != null) {
       fairMin = officialMin;
       fairMax = officialMax;
     } else if (benchmarkStats != null) {
@@ -106,12 +186,26 @@ class PricingEngine {
 
     // 6. Calculate Price Score
     final double ratio = fairMax > 0 ? (input.quotedPrice / fairMax) : 1.0;
-    final bool isUnusuallyLow =
-        input.quotedPrice < (PriceThresholds.unusuallyLowMultiplier * fairMin);
+    final bool isUnusuallyLow = (activeFixedTariff != null && !tripIsToAirport)
+        ? input.quotedPrice < (0.6 * fairMin)
+        : input.quotedPrice < (PriceThresholds.unusuallyLowMultiplier * fairMin);
 
     double priceScore;
     if (isUnusuallyLow) {
       priceScore = PriceThresholds.unusuallyLowDefaultScore.toDouble();
+    } else if (activeFixedTariff != null && !tripIsToAirport) {
+      final double toleranceLimit = (fairMax * 1.05).roundToDouble();
+      if (input.quotedPrice <= toleranceLimit) {
+        priceScore = 0.0;
+      } else if (ratio > 1.50) {
+        priceScore = 80.0;
+      } else if (ratio <= PriceThresholds.ratioSuspiciousFloor) {
+        priceScore = ((ratio - 1.05) / 0.20) * PriceThresholds.priceScoreAt1_25;
+      } else {
+        priceScore = PriceThresholds.priceScoreAt1_25 +
+            ((ratio - 1.25) / 0.25) *
+                (PriceThresholds.priceScoreAt1_60 - PriceThresholds.priceScoreAt1_25);
+      }
     } else if (ratio <= PriceThresholds.ratioFairFloor) {
       priceScore = 0.0;
     } else if (ratio <= PriceThresholds.ratioSuspiciousFloor) {
@@ -163,7 +257,14 @@ class PricingEngine {
     PriceVerdictLevel level = PriceVerdictLevel.fromScore(riskScore);
 
     // 9. Apply Overrides
-    if (officialMax != null) {
+    if (activeFixedTariff != null && !tripIsToAirport) {
+      if (input.quotedPrice <= (fairMax * 1.05).roundToDouble()) {
+        level = PriceVerdictLevel.fair;
+      } else if (ratio > 1.5) {
+        level = PriceVerdictLevel.highRisk;
+        if (riskScore < 60) riskScore = 65;
+      }
+    } else if (officialMax != null) {
       if (input.quotedPrice <= officialMax) {
         if (level == PriceVerdictLevel.highRisk) {
           level = PriceVerdictLevel.suspicious;
@@ -177,7 +278,13 @@ class PricingEngine {
 
     // 10. Confidence Level
     final ConfidenceLevel confidence;
-    if (officialFare != null ||
+    if (useAirportDerivedEstimate) {
+      confidence = ConfidenceLevel.low; // Always Low, never official
+    } else if (activeFixedTariff != null && !tripIsToAirport) {
+      confidence = activeFixedTariff.hasFlagCheckPrintedList
+          ? ConfidenceLevel.medium
+          : ConfidenceLevel.high;
+    } else if (officialFare != null ||
         matchingReports.length >= PriceThresholds.highConfidenceReportCount) {
       confidence = ConfidenceLevel.high;
     } else if (matchingReports.length >=
@@ -199,6 +306,49 @@ class PricingEngine {
       input: input,
     );
 
+    if (activeFixedTariff != null && !tripIsToAirport) {
+      factors.add(
+        const Factor(
+          label: 'Prepaid Fare Note',
+          points: 0,
+          evidence: 'Ask the counter whether tolls are included',
+          sourceTag: '[Official Tariff]',
+        ),
+      );
+      if (activeFixedTariff.hasFlagCheckPrintedList) {
+        factors.add(
+          const Factor(
+            label: 'Counter Check',
+            points: 0,
+            evidence: 'Confirm at the counter',
+            sourceTag: '[Official Tariff]',
+          ),
+        );
+      }
+    } else if (useAirportDerivedEstimate) {
+      if (tripIsToAirport) {
+        factors.add(
+          const Factor(
+            label: 'Trip to Airport (Reverse Direction)',
+            points: 0,
+            evidence:
+                'Trip is TO the airport. Prepaid counter rates officially apply FROM the airport; rate is estimated from airport prepaid baseline.',
+            sourceTag: '[Estimated from airport prepaid rates]',
+          ),
+        );
+      } else {
+        factors.add(
+          const Factor(
+            label: 'Unlisted Airport Route',
+            points: 0,
+            evidence:
+                'Destination not in printed prepaid list. Estimated from airport prepaid rates.',
+            sourceTag: '[Estimated from airport prepaid rates]',
+          ),
+        );
+      }
+    }
+
     // 12. Counter-offer line
     final double counterOffer = fairMax.roundToDouble();
     final String counterOfferLine =
@@ -215,6 +365,36 @@ class PricingEngine {
         ? (diffRupees / fairMax) * 100.0
         : 0.0;
 
+    final String explanation;
+    if (activeFixedTariff != null && !tripIsToAirport && ratio > 1.5) {
+      explanation =
+          'Quoted price is ${(input.quotedPrice / fairMax).toStringAsFixed(1)}x the official prepaid fare';
+    } else if (activeFixedTariff != null && !tripIsToAirport && isUnusuallyLow) {
+      explanation =
+          'Quoted price is below 0.6x official prepaid fare. Possible hidden charges or bait-and-switch risk.';
+    } else if (activeFixedTariff != null &&
+        !tripIsToAirport &&
+        input.quotedPrice <= (fairMax * 1.05).roundToDouble()) {
+      explanation =
+          'Price matches official prepaid taxi fare of ₹${fairMax.round()} (within 5% tolerance).';
+    } else if (useAirportDerivedEstimate) {
+      if (tripIsToAirport) {
+        explanation =
+            'Trip to airport: Estimated from airport prepaid rates of ₹${fairMin.round()}–₹${fairMax.round()} (Low confidence). Official counter fixed rates apply only departing from the airport.';
+      } else {
+        explanation =
+            'Destination not in official prepaid tariff list. Estimated from airport prepaid rates of ₹${fairMin.round()}–₹${fairMax.round()} (Low confidence).';
+      }
+    } else {
+      explanation = _buildDefaultExplanation(
+        level,
+        input.quotedPrice,
+        fairMin,
+        fairMax,
+        confidence,
+      );
+    }
+
     return PriceCheckResult(
       level: level,
       riskScore: riskScore,
@@ -228,13 +408,7 @@ class PricingEngine {
       counterOfferLine: counterOfferLine,
       sources: sources,
       factors: factors,
-      explanation: _buildDefaultExplanation(
-        level,
-        input.quotedPrice,
-        fairMin,
-        fairMax,
-        confidence,
-      ),
+      explanation: explanation,
       nearbyTraps: nearbyTraps,
       isUnusuallyLow: isUnusuallyLow,
     );
@@ -505,5 +679,14 @@ class PricingEngine {
       case PriceVerdictLevel.highRisk:
         return 'Quoted ₹${quoted.round()} significantly exceeds standard local rates of ₹${fairMin.round()}–₹${fairMax.round()}$confNote. High risk of overcharging or tourist commission.';
     }
+  }
+
+  /// Helper to calculate derived estimate from airport prepaid rates
+  static double calculateAirportDerivedEstimate(
+    double distanceKm, {
+    double baseFare = 200.0,
+    double perKmRate = 24.0,
+  }) {
+    return (baseFare + (perKmRate * distanceKm)).roundToDouble();
   }
 }

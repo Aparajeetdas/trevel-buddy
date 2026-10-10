@@ -66,6 +66,8 @@ class GeminiProxyService {
   static const Set<String> _allowedToolTypes = {
     'check_price',
     'checkPrice',
+    'getAirportPrepaidFare',
+    'get_airport_prepaid_fare',
     'get_place_details',
     'getPlaceDetails',
     'search_nearby',
@@ -255,6 +257,103 @@ class GeminiProxyService {
             type: 'check_price',
             label: 'Check Transit Fare',
             params: {},
+          ),
+        ],
+      );
+    }
+
+    if (query.contains('shillong') ||
+        (query.contains('prepaid') &&
+            (query.contains('taxi') ||
+                query.contains('fare') ||
+                query.contains('airport') ||
+                query.contains('counter'))) ||
+        (query.contains('airport') &&
+            (query.contains('taxi') ||
+                query.contains('fare') ||
+                query.contains('cab') ||
+                query.contains('rates')))) {
+      if (query.contains('shillong')) {
+        return AgentMessage(
+          id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+          sender: 'buddy',
+          text:
+              '[Official tariff] Official LGBI Airport Pre-paid Taxi rates to Shillong:\n'
+              '• Shillong (Police Bazar): ₹2,600 (about 110 km)\n'
+              '• Shillong (Barapani): ₹2,300 (about 95 km)\n'
+              '• Shillong (NEHU/Mawlai): ₹2,400 (about 100 km)\n\n'
+              'Note: Confirm at the counter whether tolls are included.',
+          timestamp: DateTime.now(),
+          actions: const [
+            AgentAction(
+              type: 'getAirportPrepaidFare',
+              label: 'View Airport Rate Card',
+              params: {'destination': 'Shillong'},
+            ),
+            AgentAction(
+              type: 'check_price',
+              label: 'Check Police Bazar (₹2,600)',
+              params: {
+                'pickup': 'LGBI Airport, Guwahati',
+                'drop': 'Shillong (Police Bazar)',
+                'quoted': 2600,
+                'serviceType': 'taxi',
+              },
+            ),
+          ],
+        );
+      }
+
+      if (query.contains('ganeshguri')) {
+        return AgentMessage(
+          id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+          sender: 'buddy',
+          text:
+              '[Official tariff] LGBI Airport Pre-paid Taxi to Ganeshguri is fixed at ₹680 (about 31 km, ~₹21.9/km).\n\n'
+              'Drivers cannot charge above the official tariff. Note: Ask the counter whether tolls are included.',
+          timestamp: DateTime.now(),
+          actions: const [
+            AgentAction(
+              type: 'getAirportPrepaidFare',
+              label: 'View Airport Rate Card',
+              params: {'destination': 'Ganeshguri'},
+            ),
+            AgentAction(
+              type: 'check_price',
+              label: 'Check Ganeshguri (₹680)',
+              params: {
+                'pickup': 'LGBI Airport, Guwahati',
+                'drop': 'Ganeshguri',
+                'quoted': 680,
+                'serviceType': 'taxi',
+              },
+            ),
+          ],
+        );
+      }
+
+      return AgentMessage(
+        id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+        sender: 'buddy',
+        text:
+            '[Official tariff] The LGBI Airport Pre-paid Taxi Counter in Guwahati has government-notified fixed tariffs for over 60 destinations across Guwahati, Assam, and Meghalaya (e.g. Ganeshguri ₹680, Shillong ₹2,600).\n\n'
+            'Ask the counter whether tolls are included before boarding.',
+        timestamp: DateTime.now(),
+        actions: const [
+          AgentAction(
+            type: 'getAirportPrepaidFare',
+            label: 'View All Airport Fares',
+            params: {},
+          ),
+          AgentAction(
+            type: 'check_price',
+            label: 'Check Pre-paid Price',
+            params: {
+              'pickup': 'LGBI Airport, Guwahati',
+              'drop': 'Ganeshguri',
+              'quoted': 680,
+              'serviceType': 'taxi',
+            },
           ),
         ],
       );

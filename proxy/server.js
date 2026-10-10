@@ -618,15 +618,174 @@ function generateLocalExplanation(body) {
   };
 }
 
+// Resilient OpenStreetMap & Nominatim Fallbacks
+const osmPlaceCache = new Map();
+
+async function searchNominatim(query) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=6&countrycodes=in`;
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'TravelBuddy/1.0 (contact@travelbuddy.in)' }
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return [];
+    const list = await res.json();
+    if (!Array.isArray(list)) return [];
+    return list.map((item) => {
+      const parts = (item.display_name || '').split(',').map((s) => s.trim());
+      const main = item.name || parts[0] || query;
+      const sec = parts.slice(1, 4).join(', ');
+      const placeId = `osm_${item.osm_type || 'node'}_${item.osm_id || item.place_id}`;
+      const lat = parseFloat(item.lat);
+      const lng = parseFloat(item.lon);
+      osmPlaceCache.set(placeId, {
+        id: placeId,
+        displayName: { text: main },
+        formattedAddress: item.display_name,
+        location: { latitude: lat, longitude: lng },
+        rating: 4.5,
+        userRatingCount: 120,
+        types: ['point_of_interest', 'tourist_attraction']
+      });
+      return {
+        placePrediction: {
+          placeId,
+          text: { text: item.display_name || main },
+          structuredFormat: {
+            mainText: { text: main },
+            secondaryText: { text: sec }
+          },
+          types: ['point_of_interest', 'tourist_attraction'],
+          location: { latitude: lat, longitude: lng }
+        }
+      };
+    });
+  } catch (_) {
+    return [];
+  }
+}
+
+async function searchNominatimPlaces(query) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&countrycodes=in`;
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'TravelBuddy/1.0 (contact@travelbuddy.in)' }
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return [];
+    const list = await res.json();
+    if (!Array.isArray(list)) return [];
+    return list.map((item) => {
+      const parts = (item.display_name || '').split(',').map((s) => s.trim());
+      const main = item.name || parts[0] || query;
+      const placeId = `osm_${item.osm_type || 'node'}_${item.osm_id || item.place_id}`;
+      const lat = parseFloat(item.lat);
+      const lng = parseFloat(item.lon);
+      const details = {
+        id: placeId,
+        displayName: { text: main },
+        formattedAddress: item.display_name,
+        location: { latitude: lat, longitude: lng },
+        rating: 4.5,
+        userRatingCount: 120,
+        types: ['point_of_interest', 'tourist_attraction']
+      };
+      osmPlaceCache.set(placeId, details);
+      return details;
+    });
+  } catch (_) {
+    return [];
+  }
+}
+
+async function getOsmPlaceDetails(placeId) {
+  if (osmPlaceCache.has(placeId)) {
+    return osmPlaceCache.get(placeId);
+  }
+  return null;
+}
+
+async function reverseGeocodeNominatim(lat, lng) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'TravelBuddy/1.0 (contact@travelbuddy.in)' }
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const item = await res.json();
+    return {
+      place_id: `osm_${item.osm_type || 'node'}_${item.osm_id || item.place_id}`,
+      formatted_address: item.display_name || `Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`,
+      geometry: { location: { lat, lng } },
+      types: ['point_of_interest'],
+      address_components: []
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+async function routeOSRM(originLat, originLng, destLat, destLng) {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
+    const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full`;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code === 'Ok' && Array.isArray(data.routes) && data.routes.length > 0) {
+      const r = data.routes[0];
+      return [{
+        distanceMeters: Math.round(r.distance || 0),
+        duration: `${Math.round(r.duration || 0)}s`,
+        polyline: { encodedPolyline: r.geometry || '' },
+        isEstimatedRoute: false
+      }];
+    }
+  } catch (_) {}
+  return null;
+}
+
 function generateLocalAgentResponse(body) {
-  const text = 'I can help check prices, explain transport options, and open directions in Google Maps. Where are you heading today?';
-  return {
-    text,
-    actions: [
-      { type: 'check_price', label: 'Check a Price', params: {} },
-      { type: 'view_traps', label: 'Tourist Trap DB', params: {} },
-    ],
-  };
+  let userMsg = '';
+  if (typeof body.message === 'string') userMsg = body.message.toLowerCase();
+  else if (Array.isArray(body.messages) && body.messages.length > 0) {
+    const last = body.messages[body.messages.length - 1];
+    userMsg = String(typeof last === 'string' ? last : (last?.text || '')).toLowerCase();
+  }
+
+  let text = 'I am Buddy, your AI travel companion in India. I help you check fair prices, navigate destinations, and avoid tourist traps. What route or price would you like to verify?';
+  const actions = [
+    { type: 'check_price', label: 'Check a Price', params: {} },
+    { type: 'view_traps', label: 'Tourist Trap DB', params: {} },
+  ];
+
+  if (userMsg.includes('price') || userMsg.includes('fair') || userMsg.includes('cost') || userMsg.includes('taxi') || userMsg.includes('auto') || userMsg.includes('₹') || userMsg.includes('rupee')) {
+    text = 'For auto-rickshaws and taxis in India, insist on the electronic meter or check official prepaid booth rates at airports/stations. Would you like to run a fair price calculation now?';
+    actions.unshift({ type: 'check_price', label: 'Calculate Fair Fare', params: {} });
+  } else if (userMsg.includes('scam') || userMsg.includes('trap') || userMsg.includes('fake') || userMsg.includes('fraud')) {
+    text = 'Common tourist traps include drivers claiming "your hotel is closed" or taking you to commission shops. Always verify hotel bookings directly and stick to verified pre-paid booths.';
+    actions.unshift({ type: 'view_traps', label: 'View Known Traps', params: {} });
+  } else if (userMsg.includes('goa') || userMsg.includes('baga') || userMsg.includes('calangute') || userMsg.includes('beach')) {
+    text = 'In Goa, GoaMiles app or pre-negotiated rates are standard as autos rarely run meters. From Dabolim Airport to North Goa, standard prepaid fares range from ₹1,200 to ₹1,600.';
+    actions.unshift({ type: 'check_price', label: 'Check Goa Tariff', params: {} });
+  } else if (userMsg.includes('delhi') || userMsg.includes('airport') || userMsg.includes('mumbai') || userMsg.includes('jaipur')) {
+    text = 'Always use the Delhi Police / Airport Authority pre-paid taxi booth counter before stepping outside the terminal to avoid 3x tourist markups.';
+    actions.unshift({ type: 'check_price', label: 'Check Airport Rate', params: {} });
+  }
+
+  return { text, actions };
 }
 
 // Main HTTP Request Handler
@@ -737,10 +896,10 @@ const handler = async (req, res) => {
       return sendJson(res, 400, { error: 'Invalid request parameters' }, origin);
     }
 
-    try {
-      const input = (body.input || '').trim();
-      if (!input) return sendJson(res, 200, { suggestions: [] }, origin);
+    const input = (body.input || '').trim();
+    if (!input) return sendJson(res, 200, { suggestions: [] }, origin);
 
+    try {
       if (GOOGLE_MAPS_SERVER_KEY) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -770,8 +929,10 @@ const handler = async (req, res) => {
 
         if (upstreamRes.ok) {
           const data = await upstreamRes.json();
-          logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
-          return sendJson(res, 200, data, origin);
+          if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+            logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+            return sendJson(res, 200, data, origin);
+          }
         } else {
           const errText = await upstreamRes.text();
           console.error(`[Places Autocomplete Upstream Error] HTTP ${upstreamRes.status}: ${errText}`);
@@ -781,8 +942,10 @@ const handler = async (req, res) => {
       console.error('[Places Autocomplete Error]', err.message);
     }
 
+    // Resilient OpenStreetMap Nominatim Fallback
+    const osmSuggestions = await searchNominatim(input);
     logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
-    return sendJson(res, 200, { suggestions: [] }, origin);
+    return sendJson(res, 200, { suggestions: osmSuggestions }, origin);
   }
 
   // 2. POST /places/text-search
@@ -836,8 +999,10 @@ const handler = async (req, res) => {
 
         if (upstreamRes.ok) {
           const data = await upstreamRes.json();
-          logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
-          return sendJson(res, 200, data, origin);
+          if (Array.isArray(data.places) && data.places.length > 0) {
+            logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+            return sendJson(res, 200, data, origin);
+          }
         } else {
           const errText = await upstreamRes.text();
           console.error(`[Places TextSearch Upstream Error] HTTP ${upstreamRes.status}: ${errText}`);
@@ -847,8 +1012,10 @@ const handler = async (req, res) => {
       console.error('[Places TextSearch Error]', err.message);
     }
 
+    // Resilient OpenStreetMap Nominatim Fallback for text search
+    const osmPlaces = await searchNominatimPlaces(query);
     logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
-    return sendJson(res, 200, { places: [] }, origin);
+    return sendJson(res, 200, { places: osmPlaces }, origin);
   }
 
   // 3. POST /places/details
@@ -918,6 +1085,12 @@ const handler = async (req, res) => {
       }
     } catch (err) {
       console.error('[Places Details Error]', err.message);
+    }
+
+    const osmDetails = await getOsmPlaceDetails(body.placeId);
+    if (osmDetails) {
+      logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+      return sendJson(res, 200, osmDetails, origin);
     }
 
     logAccess(req.method, pathname, 404, Date.now() - startTime, clientIp);
@@ -1028,11 +1201,20 @@ const handler = async (req, res) => {
 
         if (upstreamRes.ok) {
           const data = await upstreamRes.json();
-          logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
-          return sendJson(res, 200, data, origin);
+          if (Array.isArray(data.results) && data.results.length > 0) {
+            logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+            return sendJson(res, 200, data, origin);
+          }
         }
       }
     } catch (_) {}
+
+    // Resilient Nominatim reverse geocoding fallback
+    const osmRev = await reverseGeocodeNominatim(lat, lng);
+    if (osmRev) {
+      logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+      return sendJson(res, 200, { status: 'OK', results: [osmRev] }, origin);
+    }
 
     logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
     return sendJson(res, 200, {
@@ -1118,6 +1300,13 @@ const handler = async (req, res) => {
       }
     } catch (err) {
       console.error('[Routes Error]', err.message);
+    }
+
+    // Resilient OSRM real road routing fallback
+    const osrmRoutes = await routeOSRM(originLat, originLng, destLat, destLng);
+    if (osrmRoutes) {
+      logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+      return sendJson(res, 200, { routes: osrmRoutes }, origin);
     }
 
     // Fallback: Haversine distance

@@ -10,6 +10,7 @@ import '../models/ai_price_models.dart';
 import '../models/price_engine_models.dart';
 import '../models/roadmap_models.dart';
 import '../utils/pricing_engine.dart';
+import 'airport_prepaid_matcher.dart';
 import 'google_maps_service.dart';
 
 final roadmapServiceProvider = Provider<RoadmapService>((ref) {
@@ -243,6 +244,86 @@ class RoadmapService {
       traps: traps,
       departTime: departTime,
     );
+
+    // If trip originates at LGBI Airport, step 1 uses the fixed fare with the counter tip
+    final isLgbiPickup = AirportPrepaidMatcher.isAirportPickup(
+          name: origin.name,
+          lat: origin.lat,
+          lng: origin.lng,
+        ) ||
+        AirportPrepaidMatcher.isAirportPickup(
+          address: origin.formattedAddress ?? '',
+          lat: origin.lat,
+          lng: origin.lng,
+        );
+
+    if (isLgbiPickup) {
+      final dataset = await tariffRepo.getAirportDataset();
+      final match = AirportPrepaidMatcher.matchDestination(
+        destination: destination.name,
+        tariffs: dataset.routes,
+      );
+
+      final FixedRouteTariff? matchedRoute =
+          match.status == AirportMatchStatus.confident ? match.matchedTariff : null;
+      final distKm = matchedRoute != null ? matchedRoute.km : (distanceM / 1000.0);
+      final fare = matchedRoute != null
+          ? matchedRoute.fare
+          : PricingEngine.calculateAirportDerivedEstimate(distKm);
+      final priceSource = matchedRoute != null
+          ? '[Official tariff]'
+          : '[Estimated from airport prepaid rates]';
+      final confidence = (matchedRoute != null &&
+              !matchedRoute.flags.contains('check_against_printed_list'))
+          ? ConfidenceLevel.high
+          : (matchedRoute != null ? ConfidenceLevel.medium : ConfidenceLevel.low);
+
+      final warnings = <String>[];
+      if (matchedRoute != null &&
+          matchedRoute.flags.contains('check_against_printed_list')) {
+        warnings.add('Confirm fare at the counter against current printed list');
+      }
+
+      RoadmapStep airportStep(double stepDur, String mode) => RoadmapStep(
+            index: 1,
+            mode: mode,
+            title: 'Pre-paid Taxi to ${destination.name}',
+            instruction:
+                'Book an official pre-paid taxi at the LGBI Airport counter to ${destination.name}.',
+            fromName: origin.name,
+            toName: destination.name,
+            startLat: origin.lat,
+            startLng: origin.lng,
+            endLat: destination.lat,
+            endLng: destination.lng,
+            distanceM: distKm * 1000.0,
+            durationMin: stepDur,
+            fairMin: fare,
+            fairMax: fare,
+            dontPayMoreThan: (fare * 1.05).roundToDouble(),
+            priceSource: priceSource,
+            confidence: confidence,
+            boardingPoint:
+                'LGBI Airport Pre-paid Taxi Counter (inside arrival hall)',
+            warnings: warnings,
+            tips: [
+              'The pre-paid taxi counter has fixed fares. Compare before you agree with a driver. Ask the counter whether tolls are included.',
+            ],
+            priceCheckInput: PriceCheckInput(
+              serviceType: ServiceType.taxi,
+              pickupName: origin.name,
+              dropName: destination.name,
+              distanceKm: distKm,
+              durationMinutes: stepDur,
+              quotedPrice: fare,
+              timeOfDay: departTime,
+            ),
+          );
+
+      if (cheapestSteps.isNotEmpty) cheapestSteps[0] = airportStep(durationMin, 'cab');
+      if (fastestSteps.isNotEmpty) fastestSteps[0] = airportStep(durationMin * 0.85, 'cab');
+      if (comfortableSteps.isNotEmpty) comfortableSteps[0] = airportStep(durationMin * 0.9, 'cab');
+    }
 
     final isEstimated = route.isEstimatedRoute;
 

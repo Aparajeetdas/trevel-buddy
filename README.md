@@ -72,6 +72,74 @@ Travelers and tourists in India regularly face excessive markups (300% to 500%),
 
 ---
 
+## ✈️ Official LGBI Airport (Guwahati) Pre-paid Taxi Tariff Integration
+
+Travel Buddy integrates the official pre-paid taxi rate card for rides departing from **Lokpriya Gopinath Bordoloi International (LGBI) Airport, Guwahati, Assam**.
+
+### 1. Data Source
+* **Official Provider**: `LGBI Airport Pre-paid Taxi Counter, Guwahati`
+* **Coverage**: Over 60 verified destination routes across Local Guwahati, Long Distance Assam, and Out-of-State Meghalaya (including Shillong Police Bazar, Barapani, and NEHU/Mawlai).
+* **Location in Project**: [`assets/data/airport_prepaid_taxi_fares.json`](assets/data/airport_prepaid_taxi_fares.json)
+* **Registered Asset**: Bundled in `pubspec.yaml`, loaded lazily and cached via `LocalGovTariffRepository`.
+
+### 2. Pricing Priority & Engine Rules
+* **Top Priority Fair-Price Source**: When a ride originates at LGBI Airport and matches a fixed prepaid route, the fixed tariff overrides standard city rate cards and statistical models as the top priority fair-price benchmark.
+* **Zero Spread Guarantee**: For verified prepaid routes, `fairMin = fairMax = official fare` (e.g. Ganeshguri is strictly ₹680 for 31 km).
+* **5% Tolerance Window**: Quoted prices within 5% above the official fare (e.g., ₹714 for a ₹680 route) receive a `Fair` verdict with `0` penalty points.
+* **No Added Surcharges**: Surcharges (night, waiting, tolls) are never added on top of official prepaid fares. An advisory factor prompts travelers: *"Ask the counter whether tolls are included"*.
+* **Overcharge Thresholds**:
+  * Quotes above **1.5x official fare** trigger an immediate **🔴 High Risk** verdict (e.g. ₹1,200 quote vs ₹680 official -> *"Quoted price is 1.8x the official prepaid fare"*).
+  * Quotes below **0.6x official fare** are flagged as a potential hidden-charge or bait-and-switch risk.
+* **Fallback for Unlisted Destinations & Reverse Trips**:
+  * Unlisted destinations from the airport, or trips traveling **TO** the airport, use the derived estimate formula:
+    $$\text{Fare} = \text{Base Fare (₹200)} + (\text{₹24/km} \times \text{Distance})$$
+  * These are labeled `[Estimated from airport prepaid rates]` with **Low Confidence** (never official).
+
+### 3. How to Update the Fares File
+The dataset is stored in standard JSON format in `assets/data/airport_prepaid_taxi_fares.json`:
+
+```json
+{
+  "source": "LGBI Airport Pre-paid Taxi Counter, Guwahati",
+  "effectiveDate": null,
+  "verified": true,
+  "originCoordinates": {
+    "lat": 26.1061,
+    "lng": 91.5859
+  },
+  "baseFare": 200.0,
+  "perKmRate": 24.0,
+  "routes": [
+    {
+      "origin": "LGBI Airport, Guwahati",
+      "destination": "Ganeshguri",
+      "nameHi": "गणेशगुड़ी",
+      "aliases": ["Ganesh Guri", "Dispur"],
+      "km": 31.0,
+      "fare": 680.0,
+      "category": "Local",
+      "flags": []
+    }
+  ]
+}
+```
+
+#### Route Field Specifications:
+* `destination` / `destinationName`: English destination name.
+* `nameHi` / `destinationNameHi`: Devanagari Hindi translation used for bilingual UI and Hindi query matching.
+* `aliases`: Array of common abbreviations, transit stops, or alternate spellings.
+* `km`: Official distance in kilometers as notified by the counter.
+* `fare`: Fixed prepaid rupee amount (do not change or modify without official printed confirmation).
+* `category`: `"Local"`, `"Long distance"`, or `"Out of state"`.
+* `flags`: Optional flags such as `["check_against_printed_list"]` (used when counter signboards have known variant rates; automatically prompts the user to confirm at the counter and sets confidence to Medium).
+
+### 4. Where to Set `effectiveDate` and `verified`
+Both fields are located at the root level of `assets/data/airport_prepaid_taxi_fares.json`:
+* **`effectiveDate`**: Set to an ISO 8601 date string (e.g. `"2026-04-01"`) when an official revision date is published. When set to `null`, the app transparently renders the advisory note: *"effective date not stated"*.
+* **`verified`**: Set to `true` when the rate card is cross-checked against current airport counter signage or published gazette notifications. Set to `false` if awaiting community validation.
+
+---
+
 ## 🌟 Hero Features
 
 ### 1. ⚡ "Check a Price Before You Pay" (Hero Feature)

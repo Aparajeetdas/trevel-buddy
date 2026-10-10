@@ -89,6 +89,21 @@ class MockFailingTariffRepository implements GovTariffRepository {
     required ServiceType serviceType,
     String? vehicleType,
   }) async => null;
+
+  @override
+  Future<AirportPrepaidFareDataset> getAirportDataset({
+    bool forceRefresh = false,
+  }) async => const AirportPrepaidFareDataset(
+        source: 'LGBI Airport Pre-paid Taxi Counter, Guwahati',
+        verified: true,
+        origin: 'LGBI Airport, Guwahati',
+        routes: [],
+      );
+
+  @override
+  Future<List<FixedRouteTariff>> getAirportPrepaidTariffs({
+    bool forceRefresh = false,
+  }) async => [];
 }
 
 Widget createTestApp({

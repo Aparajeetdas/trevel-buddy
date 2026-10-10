@@ -6,6 +6,7 @@ import '../../../core/models/roadmap_models.dart';
 import '../../../core/services/gemini_proxy_service.dart';
 import '../../../core/services/map_launcher_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../airport_fares/presentation/airport_prepaid_fares_screen.dart';
 import '../../price_checker/presentation/check_price_input_screen.dart';
 import '../../ride/presentation/ride_mode_screen.dart';
 import '../../roadmap/presentation/roadmap_screen.dart';
@@ -134,6 +135,8 @@ class _AskBuddySheetState extends ConsumerState<AskBuddySheet> {
   static const Set<String> _allowedToolTypes = {
     'check_price',
     'checkPrice',
+    'getAirportPrepaidFare',
+    'get_airport_prepaid_fare',
     'view_traps',
     'getScamRadar',
     'start_ride',
@@ -152,6 +155,7 @@ class _AskBuddySheetState extends ConsumerState<AskBuddySheet> {
 
   static const Set<String> _allowedScreens = {
     'check_price',
+    'airport_fares',
     'tourist_traps',
     'ride_mode',
     'explore',
@@ -167,10 +171,25 @@ class _AskBuddySheetState extends ConsumerState<AskBuddySheet> {
     }
 
     Navigator.pop(context);
-    if (action.type == 'check_price' || action.type == 'checkPrice') {
+    if (action.type == 'getAirportPrepaidFare' ||
+        action.type == 'get_airport_prepaid_fare') {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const CheckPriceInputScreen()),
+        MaterialPageRoute(builder: (_) => const AirportPrepaidFaresScreen()),
+      );
+    } else if (action.type == 'check_price' || action.type == 'checkPrice') {
+      final pickup = action.params['pickup'] as String?;
+      final drop = (action.params['drop'] ?? action.params['destination']) as String?;
+      final quoted = (action.params['quoted'] as num?)?.toDouble();
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CheckPriceInputScreen(
+            initialPickupName: pickup,
+            initialDropName: drop,
+            initialQuotedPrice: quoted,
+          ),
+        ),
       );
     } else if (action.type == 'view_traps' || action.type == 'getScamRadar') {
       Navigator.push(
@@ -227,6 +246,13 @@ class _AskBuddySheetState extends ConsumerState<AskBuddySheet> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CheckPriceInputScreen()),
+          );
+        } else if (screen == 'airport_fares') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AirportPrepaidFaresScreen(),
+            ),
           );
         } else if (screen == 'tourist_traps') {
           Navigator.push(

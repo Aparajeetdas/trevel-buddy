@@ -15,6 +15,19 @@ abstract class GovTariffRepository {
     required ServiceType serviceType,
     String? vehicleType,
   });
+  Future<AirportPrepaidFareDataset> getAirportDataset({
+    bool forceRefresh = false,
+  }) async {
+    return const AirportPrepaidFareDataset(
+      source: 'LGBI Airport Pre-paid Taxi Counter, Guwahati',
+      verified: true,
+      origin: 'LGBI Airport, Guwahati',
+      routes: [],
+    );
+  }
+  Future<List<FixedRouteTariff>> getAirportPrepaidTariffs({
+    bool forceRefresh = false,
+  }) async => [];
   bool get isFetchedRemotely;
   DateTime? get lastRefreshed;
 }
@@ -22,6 +35,8 @@ abstract class GovTariffRepository {
 class LocalGovTariffRepository implements GovTariffRepository {
   final String? remoteUrl;
   List<GovTariff>? _cachedTariffs;
+  AirportPrepaidFareDataset? _cachedAirportDataset;
+  List<FixedRouteTariff>? _cachedAirportTariffs;
   bool _isFetchedRemotely = false;
   DateTime? _lastRefreshed;
 
@@ -68,6 +83,57 @@ class LocalGovTariffRepository implements GovTariffRepository {
     _isFetchedRemotely = false;
     _lastRefreshed = DateTime.now();
     return _cachedTariffs!;
+  }
+
+  @override
+  Future<AirportPrepaidFareDataset> getAirportDataset({
+    bool forceRefresh = false,
+  }) async {
+    if (_cachedAirportDataset != null && !forceRefresh) {
+      return _cachedAirportDataset!;
+    }
+
+    final String raw = await rootBundle
+        .loadString('assets/data/airport_prepaid_taxi_fares.json');
+    final dynamic parsed = jsonDecode(raw);
+
+    if (parsed is Map<String, dynamic>) {
+      _cachedAirportDataset = AirportPrepaidFareDataset.fromJson(parsed);
+    } else if (parsed is List<dynamic>) {
+      final routes = parsed
+          .map((e) => FixedRouteTariff.fromJson(e as Map<String, dynamic>))
+          .toList();
+      _cachedAirportDataset = AirportPrepaidFareDataset(
+        source: routes.isNotEmpty
+            ? routes.first.source
+            : 'LGBI Airport Pre-paid Taxi Counter, Guwahati',
+        effectiveDate: null,
+        verified: true,
+        origin: 'LGBI Airport, Guwahati',
+        routes: routes,
+      );
+    } else {
+      _cachedAirportDataset = const AirportPrepaidFareDataset(
+        source: 'LGBI Airport Pre-paid Taxi Counter, Guwahati',
+        verified: true,
+        origin: 'LGBI Airport, Guwahati',
+        routes: [],
+      );
+    }
+
+    _cachedAirportTariffs = _cachedAirportDataset!.routes;
+    return _cachedAirportDataset!;
+  }
+
+  @override
+  Future<List<FixedRouteTariff>> getAirportPrepaidTariffs({
+    bool forceRefresh = false,
+  }) async {
+    if (_cachedAirportTariffs != null && !forceRefresh) {
+      return _cachedAirportTariffs!;
+    }
+    final dataset = await getAirportDataset(forceRefresh: forceRefresh);
+    return dataset.routes;
   }
 
   @override
@@ -118,3 +184,33 @@ final tariffsFutureProvider = FutureProvider<List<GovTariff>>((ref) async {
     operationName: 'Load Tariffs',
   );
 });
+
+final airportPrepaidDatasetProvider =
+    FutureProvider<AirportPrepaidFareDataset>((ref) async {
+  final repo = ref.watch(govTariffRepositoryProvider);
+  return withTimeout(
+    repo.getAirportDataset(),
+    timeout: const Duration(seconds: 4),
+    fallback: const AirportPrepaidFareDataset(
+      source: 'LGBI Airport Pre-paid Taxi Counter, Guwahati',
+      verified: true,
+      origin: 'LGBI Airport, Guwahati',
+      routes: [],
+    ),
+    operationName: 'Load Airport Prepaid Dataset',
+  );
+});
+
+final airportPrepaidFaresProvider = airportPrepaidDatasetProvider;
+
+final airportPrepaidTariffsProvider =
+    FutureProvider<List<FixedRouteTariff>>((ref) async {
+  final repo = ref.watch(govTariffRepositoryProvider);
+  return withTimeout(
+    repo.getAirportPrepaidTariffs(),
+    timeout: const Duration(seconds: 4),
+    fallback: <FixedRouteTariff>[],
+    operationName: 'Load Airport Prepaid Tariffs',
+  );
+});
+
