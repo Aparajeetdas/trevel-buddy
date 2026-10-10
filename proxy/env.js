@@ -29,7 +29,11 @@ try {
 
 const envSchema = z.object({
   GEMINI_API_KEY: z.string().optional().default(''),
-  GEMINI_MODEL: z.string().optional().default('gemini-1.5-flash'),
+  GEMINI_MODEL: z
+    .string()
+    .optional()
+    .default('gemini-3.8-flash')
+    .transform((m) => (m === 'gemini-1.5-flash' || !m ? 'gemini-3.8-flash' : m)),
   GOOGLE_MAPS_SERVER_KEY: z.string().optional().default(''),
   GOOGLE_MAPS_API_KEY: z.string().optional().default(''),
   PORT: z.string().optional().default('8080'),

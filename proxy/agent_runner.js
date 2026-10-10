@@ -366,7 +366,7 @@ async function runAgentLoop({ messages, context = {}, mockGeminiCaller = null })
         // Unknown tool rejected
         contents.push({
           role: 'model',
-          parts: [{ functionCall: { name: toolName, args: toolArgs || {} } }],
+          parts: [functionCallPart],
         });
         contents.push({
           role: 'user',
@@ -375,6 +375,7 @@ async function runAgentLoop({ messages, context = {}, mockGeminiCaller = null })
               functionResponse: {
                 name: toolName,
                 response: { error: `Tool '${toolName}' is not recognized or permitted.` },
+                id: functionCallPart.functionCall?.id,
               },
             },
           ],
@@ -390,7 +391,7 @@ async function runAgentLoop({ messages, context = {}, mockGeminiCaller = null })
         }
         contents.push({
           role: 'model',
-          parts: [{ functionCall: { name: toolName, args: toolArgs || {} } }],
+          parts: [functionCallPart],
         });
         contents.push({
           role: 'user',
@@ -399,6 +400,7 @@ async function runAgentLoop({ messages, context = {}, mockGeminiCaller = null })
               functionResponse: {
                 name: toolName,
                 response: { status: 'client_action_scheduled', action: actionCard?.type || toolName },
+                id: functionCallPart.functionCall?.id,
               },
             },
           ],
@@ -409,7 +411,7 @@ async function runAgentLoop({ messages, context = {}, mockGeminiCaller = null })
       // 3. Handle Server Tools
       contents.push({
         role: 'model',
-        parts: [{ functionCall: { name: toolName, args: toolArgs || {} } }],
+        parts: [functionCallPart],
       });
 
       let toolResult;
@@ -430,6 +432,7 @@ async function runAgentLoop({ messages, context = {}, mockGeminiCaller = null })
             functionResponse: {
               name: toolName,
               response: toolResult,
+              id: functionCallPart.functionCall?.id,
             },
           },
         ],
