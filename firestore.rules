@@ -34,9 +34,9 @@ service cloud.firestore {
                        isValidServiceType(request.resource.data.serviceType) &&
                        isValidPrice(request.resource.data.serviceType, request.resource.data.pricePaid) &&
                        isSafeText(request.resource.data.routeOrPlace, 200) &&
-                       request.resource.data.isFlagged == false &&
-                       request.resource.data.flagCount == 0 &&
-                       request.resource.data.userId == request.auth.uid;
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.status in ['under_review', 'approved', 'pending'] &&
+                       request.resource.data.createdAt != null;
 
       // Clients cannot update or delete approved reports (tamper-proof)
       allow update, delete: if false;

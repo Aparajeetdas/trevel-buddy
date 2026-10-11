@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/services/google_maps_service.dart';
+import '../../../../core/data/auth_repository.dart';
 import '../../../../core/data/community_repository.dart';
 import '../../../../core/models/app_models.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -10,8 +12,14 @@ import '../../../../core/widgets/community_safety_widgets.dart';
 class ReportPriceForm extends ConsumerStatefulWidget {
   final String? initialPlace;
   final double? initialPrice;
+  final VoidCallback? onReportSubmitted;
 
-  const ReportPriceForm({super.key, this.initialPlace, this.initialPrice});
+  const ReportPriceForm({
+    super.key,
+    this.initialPlace,
+    this.initialPrice,
+    this.onReportSubmitted,
+  });
 
   @override
   ConsumerState<ReportPriceForm> createState() => _ReportPriceFormState();
@@ -73,7 +81,41 @@ class _ReportPriceFormState extends ConsumerState<ReportPriceForm> {
       return;
     }
 
+    // Signed-out check: prompt user to sign in while preserving their entered form inputs
+    final currentUser = ref.read(authRepositoryProvider).currentUser;
+    if (currentUser == null) {
+      final didSignIn = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sign in to submit report'),
+          content: const Text(
+            'Please sign in to keep community pricing accurate and prevent spam. Your entered report details are saved.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.account_circle),
+              label: const Text('Sign in with Google'),
+              onPressed: () async {
+                await ref.read(authRepositoryProvider).signInWithGoogle();
+                if (ctx.mounted) Navigator.pop(ctx, true);
+              },
+            ),
+          ],
+        ),
+      );
+      if (didSignIn != true || ref.read(authRepositoryProvider).currentUser == null) {
+        return;
+      }
+    }
+
     setState(() => _isSubmitting = true);
+
+    final areaName = ref.read(activeCityProvider)?.name ?? 'Guwahati';
+    final user = ref.read(authRepositoryProvider).currentUser;
 
     try {
       final report = PriceReport(
@@ -82,8 +124,12 @@ class _ReportPriceFormState extends ConsumerState<ReportPriceForm> {
         vehicleType: _vehicleTypeController.text.trim(),
         routeOrPlace: route,
         pricePaid: price,
+        areaId: areaName,
+        status: 'under_review',
+        createdAt: DateTime.now(),
         timestamp: DateTime.now(),
         wasFair: _wasFair,
+        userId: user?.uid,
         notes: _notesController.text.trim().isNotEmpty
             ? _notesController.text.trim()
             : null,
@@ -94,21 +140,25 @@ class _ReportPriceFormState extends ConsumerState<ReportPriceForm> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Thank you! Price report added to community benchmark.',
+              'Report added - helping fellow travellers in $areaName',
             ),
             backgroundColor: AppColors.success,
           ),
         );
         _priceController.clear();
         _notesController.clear();
+        widget.onReportSubmitted?.call();
       }
     } catch (e) {
       if (mounted) {
+        final plainError = e is StateError
+            ? e.message
+            : (e is ArgumentError ? e.message.toString() : 'Submission failed: $e');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e is StateError ? e.message : 'Submission failed: $e'),
+            content: Text(plainError),
             backgroundColor: AppColors.danger,
           ),
         );

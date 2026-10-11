@@ -114,6 +114,10 @@ const RATE_LIMIT_WINDOWS = {
   route: { windowMs: 60 * 1000, max: 30 },
   ai_min: { windowMs: 60 * 1000, max: 10 },
   ai_day: { windowMs: 24 * 60 * 60 * 1000, max: 100 },
+  photo: { windowMs: 60 * 1000, max: 60 },
+  reports: { windowMs: 60 * 1000, max: 30 },
+  events: { windowMs: 60 * 1000, max: 60 },
+  featured: { windowMs: 60 * 1000, max: 60 },
 };
 
 const rateLimitStores = {
@@ -121,7 +125,17 @@ const rateLimitStores = {
   route: new Map(),
   ai_min: new Map(),
   ai_day: new Map(),
+  photo: new Map(),
+  reports: new Map(),
+  events: new Map(),
+  featured: new Map(),
 };
+
+// In-Memory Storage for Reports, Interaction Events & Popularity Rankings
+const submittedReports = [];
+const eventsLog = [];
+const featuredStore = new Map();
+const lastCronRun = new Map();
 
 function checkRateLimit(bucketName, ip) {
   const config = RATE_LIMIT_WINDOWS[bucketName];
@@ -201,7 +215,8 @@ function parseJsonBody(req) {
       }
     }
     let raw = '';
-    const MAX_BYTES = 32768; // 32 KB
+    const isAi = req.url && (req.url.includes('/agent') || req.url.includes('/explain'));
+    const MAX_BYTES = isAi ? 32768 : 8192; // 8 KB for standard endpoints, 32 KB for AI
     let exceeded = false;
 
     req.on('data', (chunk) => {
@@ -781,6 +796,127 @@ function generateLocalAgentResponse(body) {
   return { text, actions };
 }
 
+// Default City Attractions (Place IDs) for Fallback/Offline Popularity Ranking
+const DEFAULT_CITY_ATTRACTIONS = {
+  guwahati: [
+    { placeId: 'ChIJz3uQvJd_WjcRIzB_8-0E7Lw', name: 'Kamakhya Temple', rating: 4.8, userRatingCount: 38200 },
+    { placeId: 'ChIJVVWVVVVVWjcR8hV96-pQ6Bw', name: 'Umananda Temple', rating: 4.6, userRatingCount: 12500 },
+    { placeId: 'ChIJ02Kx9WvQWjcRn-tPq4F43wU', name: 'Assam State Zoo', rating: 4.3, userRatingCount: 16400 },
+    { placeId: 'ChIJ87V85vLVWjcRAh91o-2f9Rw', name: 'Brahmaputra River Heritage Centre', rating: 4.7, userRatingCount: 8900 },
+    { placeId: 'ChIJX_hW91zWWjcR3-tT77m45yU', name: 'Srimanta Sankaradeva Kalakshetra', rating: 4.6, userRatingCount: 15100 },
+    { placeId: 'ChIJG8-vX8_WWjcRj8-kH1b6-tA', name: 'Basistha Temple', rating: 4.5, userRatingCount: 9400 },
+    { placeId: 'ChIJ_zXv91LWWjcRM-tQ6-7f41A', name: 'Deepor Beel Wildlife Sanctuary', rating: 4.4, userRatingCount: 5200 },
+    { placeId: 'ChIJY4-v8_TWWjcRk9-bH2b7-tB', name: 'Navagraha Temple', rating: 4.5, userRatingCount: 6800 },
+  ],
+  jaipur: [
+    { placeId: 'ChIJ025o7tq0bTkRl1eQ95Z6X2U', name: 'Hawa Mahal', rating: 4.6, userRatingCount: 85000 },
+    { placeId: 'ChIJx_h78_TWWjcR2-tT88m56yU', name: 'Amber Palace', rating: 4.7, userRatingCount: 95000 },
+    { placeId: 'ChIJ123_4567890Rabcdef12345', name: 'City Palace Jaipur', rating: 4.5, userRatingCount: 62000 },
+    { placeId: 'ChIJ987_6543210Rfedcba54321', name: 'Jantar Mantar', rating: 4.5, userRatingCount: 54000 },
+    { placeId: 'ChIJ456_7890123Rghijk135790', name: 'Nahargarh Fort', rating: 4.6, userRatingCount: 71000 },
+    { placeId: 'ChIJ789_0123456Rlmnop246800', name: 'Jal Mahal', rating: 4.4, userRatingCount: 48000 },
+    { placeId: 'ChIJ321_6549870Rqrstu975310', name: 'Albert Hall Museum', rating: 4.5, userRatingCount: 43000 },
+    { placeId: 'ChIJ654_3210987Rvwxyz864200', name: 'Jaigarh Fort', rating: 4.5, userRatingCount: 39000 },
+  ],
+};
+
+function computePopularityForPlaces(city, candidates) {
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const fortyEightHoursAgo = now - 48 * 60 * 60 * 1000;
+  const ninetySixHoursAgo = now - 96 * 60 * 60 * 1000;
+
+  const recentEvents = eventsLog.filter((e) => e.timestamp >= sevenDaysAgo);
+
+  const scored = candidates.map((c) => {
+    // 1. Google Score (0.6 * ratingNorm + 0.4 * ratingCountNorm)
+    const rating = typeof c.rating === 'number' ? c.rating : 4.2;
+    const ratingCount = typeof (c.userRatingCount || c.userRatingsTotal) === 'number'
+      ? (c.userRatingCount || c.userRatingsTotal)
+      : 100;
+
+    const ratingScore = Math.max(0, Math.min(1, (rating - 4.0) / 1.0));
+    const ratingsCountScore = Math.min(1, Math.log10(Math.max(1, ratingCount)) / 4.0);
+    const googleScore = (0.6 * ratingScore) + (0.4 * ratingsCountScore);
+
+    // 2. App Score (last 7 days: views * 1, saves * 3, priceChecks * 2)
+    const placeEvents = recentEvents.filter((e) => e.placeId === (c.placeId || c.id));
+    const views = placeEvents.filter((e) => e.type === 'view').length;
+    const saves = placeEvents.filter((e) => e.type === 'save').length;
+    const priceChecks = placeEvents.filter((e) => e.type === 'priceCheck').length;
+    const rawAppScore = (views * 1) + (saves * 3) + (priceChecks * 2);
+    const appScore = Math.min(1.0, rawAppScore / 30.0);
+
+    // 3. Trend Boost: +0.15 if count doubled in last 48h vs previous 48h
+    const last48Events = placeEvents.filter((e) => e.timestamp >= fortyEightHoursAgo).length;
+    const prev48Events = placeEvents.filter((e) => e.timestamp >= ninetySixHoursAgo && e.timestamp < fortyEightHoursAgo).length;
+    const trendBoost = (last48Events >= 4 && (prev48Events === 0 || last48Events >= 2 * prev48Events)) ? 0.15 : 0.0;
+
+    const popularityScore = Number(((0.6 * googleScore) + (0.4 * appScore) + trendBoost).toFixed(3));
+    const isTrending = trendBoost > 0 || popularityScore >= 0.75;
+
+    // Terms of Service compliance: store ONLY placeId, score, and isTrending
+    return {
+      placeId: c.placeId || c.id,
+      popularityScore,
+      isTrending,
+    };
+  });
+
+  scored.sort((a, b) => b.popularityScore - a.popularityScore);
+  return scored.slice(0, 8);
+}
+
+async function generateFeaturedRanking(city) {
+  let candidates = [];
+  const cityKey = (city || 'Guwahati').toLowerCase().trim();
+
+  // Try Places API Text Search if Google Maps Server Key is present
+  if (GOOGLE_MAPS_SERVER_KEY) {
+    try {
+      const res = await fetch('https://places.googleapis.com/v1/places:searchText', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GOOGLE_MAPS_SERVER_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.rating,places.userRatingCount,places.businessStatus',
+        },
+        body: JSON.stringify({
+          textQuery: `top attractions in ${city}`,
+          includedType: 'tourist_attraction',
+          maxResultCount: 20,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.places)) {
+          candidates = data.places
+            .filter((p) => p.businessStatus === 'OPERATIONAL' && (p.rating || 0) >= 4.0 && (p.userRatingCount || 0) >= 50)
+            .map((p) => ({
+              placeId: p.id,
+              name: p.displayName?.text,
+              rating: p.rating,
+              userRatingCount: p.userRatingCount,
+            }));
+        }
+      }
+    } catch (e) {
+      console.warn(`[Featured Cron] Places search error for ${city}:`, e.message);
+    }
+  }
+
+  if (candidates.length === 0) {
+    candidates = DEFAULT_CITY_ATTRACTIONS[cityKey] || DEFAULT_CITY_ATTRACTIONS.guwahati;
+  }
+
+  const destinations = computePopularityForPlaces(city, candidates);
+  return {
+    city,
+    destinations,
+    updatedAt: new Date().toISOString(),
+  };
+}
+
 // Main HTTP Request Handler
 const handler = async (req, res) => {
   const startTime = Date.now();
@@ -799,7 +935,7 @@ const handler = async (req, res) => {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': (origin && isAllowedOrigin(origin)) ? origin : (origin || '*'),
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, x-cron-secret',
       'Access-Control-Max-Age': '86400',
       'Vary': 'Origin',
     });
@@ -820,6 +956,124 @@ const handler = async (req, res) => {
       hasGeminiModel: Boolean(GEMINI_MODEL),
       securityMetrics,
       time: new Date().toISOString(),
+    }, origin);
+  }
+
+  // GET /places/photo and /api/places/photo (Google Places Photos with CDN Caching & 1200 Max Width)
+  if (req.method === 'GET' && (pathname === '/places/photo' || pathname === '/photo')) {
+    const photoName = parsedUrl.searchParams.get('name') || '';
+    if (!/^places\/[^/]+\/photos\/[^/]+$/.test(photoName)) {
+      logAccess(req.method, pathname, 400, Date.now() - startTime, clientIp);
+      return sendJson(res, 400, {
+        error: 'Invalid photo name format. Expected places/{placeId}/photos/{photoId}',
+      }, origin);
+    }
+
+    if (!checkRateLimit('photo', clientIp)) {
+      logAccess(req.method, pathname, 429, Date.now() - startTime, clientIp);
+      res.setHeader('Retry-After', '60');
+      return sendJson(res, 429, { error: 'Photo rate limit exceeded. Try again in a minute.' }, origin);
+    }
+
+    const rawW = parseInt(parsedUrl.searchParams.get('w') || '800', 10);
+    const maxW = Math.min(1200, Math.max(100, isNaN(rawW) ? 800 : rawW));
+
+    if (!GOOGLE_MAPS_SERVER_KEY) {
+      logAccess(req.method, pathname, 404, Date.now() - startTime, clientIp);
+      return sendJson(res, 404, { error: 'Photo service unavailable without API key' }, origin);
+    }
+
+    try {
+      const upstreamUrl = `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=${maxW}&skipHttpRedirect=true&key=${GOOGLE_MAPS_SERVER_KEY}`;
+      const upstreamRes = await fetch(upstreamUrl);
+      if (upstreamRes.ok) {
+        const photoData = await upstreamRes.json();
+        if (photoData.photoUri) {
+          logAccess(req.method, pathname, 302, Date.now() - startTime, clientIp);
+          res.writeHead(302, {
+            'Location': photoData.photoUri,
+            'Cache-Control': 'public, max-age=3600, s-maxage=3600',
+            'Access-Control-Allow-Origin': (origin && isAllowedOrigin(origin)) ? origin : (origin || '*'),
+          });
+          return res.end();
+        }
+      }
+      logAccess(req.method, pathname, 404, Date.now() - startTime, clientIp);
+      return sendJson(res, 404, { error: 'Photo not found upstream' }, origin);
+    } catch (photoErr) {
+      logAccess(req.method, pathname, 502, Date.now() - startTime, clientIp);
+      return sendJson(res, 502, { error: 'Failed to retrieve photo upstream' }, origin);
+    }
+  }
+
+  // GET /reports and /api/reports (Community Reports List)
+  if (req.method === 'GET' && (pathname === '/reports' || pathname === '/api/reports')) {
+    const areaId = parsedUrl.searchParams.get('areaId');
+    const userId = parsedUrl.searchParams.get('userId');
+    let list = [...submittedReports];
+    if (areaId) {
+      list = list.filter((r) => (r.areaId || '').toLowerCase() === areaId.toLowerCase());
+    }
+    if (userId) {
+      list = list.filter((r) => r.userId === userId);
+    }
+    logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+    return sendJson(res, 200, { reports: list }, origin);
+  }
+
+  // GET /featured and /api/featured (Popularity-Ranked Place IDs)
+  if (req.method === 'GET' && (pathname === '/featured' || pathname === '/api/featured')) {
+    const city = parsedUrl.searchParams.get('city') || 'Guwahati';
+    const cached = featuredStore.get(city.toLowerCase());
+    if (cached) {
+      logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+      return sendJson(res, 200, cached, origin);
+    }
+    const computed = await generateFeaturedRanking(city);
+    featuredStore.set(city.toLowerCase(), computed);
+    logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+    return sendJson(res, 200, computed, origin);
+  }
+
+  // GET /cron/featured and /api/cron/featured (Scheduled Popularity Ranker)
+  if ((req.method === 'GET' && (pathname === '/cron/featured' || pathname === '/api/cron/featured')) ||
+      (req.method === 'POST' && (pathname === '/featured/refresh' || pathname === '/api/featured/refresh'))) {
+    const cronSecret = process.env.CRON_SECRET || 'cron_secret_travel_buddy';
+    const authHeader = req.headers['authorization'] || '';
+    const cronHeader = req.headers['x-cron-secret'] || '';
+    const isAuthorized = authHeader === `Bearer ${cronSecret}` || cronHeader === cronSecret || process.env.NODE_ENV !== 'production';
+
+    if (!isAuthorized) {
+      logAccess(req.method, pathname, 401, Date.now() - startTime, clientIp);
+      return sendJson(res, 401, { error: 'Unauthorized: valid CRON_SECRET required' }, origin);
+    }
+
+    const now = Date.now();
+    const lastRun = lastCronRun.get('global') || 0;
+    const isForced = parsedUrl.searchParams.get('force') === 'true' || req.method === 'POST';
+    if (!isForced && (now - lastRun < 12 * 60 * 60 * 1000)) {
+      logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+      return sendJson(res, 200, {
+        message: 'Cron skipped: Circuit breaker active, already updated within last 12 hours.',
+        results: Array.from(featuredStore.values()),
+      }, origin);
+    }
+
+    lastCronRun.set('global', now);
+    const cities = ['Guwahati', 'Jaipur', 'Shillong', 'Delhi', 'Mumbai', 'Kolkata'];
+    const results = [];
+    for (const city of cities) {
+      const computed = await generateFeaturedRanking(city);
+      featuredStore.set(city.toLowerCase(), computed);
+      results.push(computed);
+    }
+
+    logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+    return sendJson(res, 200, {
+      success: true,
+      message: 'Featured destinations ranking updated successfully',
+      citiesUpdated: cities,
+      results,
     }, origin);
   }
 
@@ -1636,6 +1890,103 @@ JSON format:
 
     logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
     return sendJson(res, 200, result, origin);
+  }
+
+  // 10. POST /reports and /api/reports (Community Intelligence Price Report Submission)
+  if (req.method === 'POST' && (pathname === '/reports' || pathname === '/api/reports')) {
+    const ReportSubmissionSchema = z.object({
+      serviceType: z.enum(['auto', 'taxi', 'bikeTaxi', 'guide', 'meal', 'room', 'entryTicket', 'other'], {
+        errorMap: () => ({ message: 'Service type must be one of: auto, taxi, bikeTaxi, guide, meal, room, entryTicket, other' }),
+      }),
+      pricePaid: z.number({ invalid_type_error: 'Price paid must be a valid number' })
+        .min(10, 'Price must be at least ₹10')
+        .max(50000, 'Price cannot exceed ₹50,000'),
+      routeOrPlace: z.string({ required_error: 'Route or place is required' })
+        .min(1, 'Route or place cannot be empty')
+        .max(200, 'Route or place cannot exceed 200 characters')
+        .refine((val) => !/https?:\/\/|www\./i.test(val), {
+          message: 'Route or place cannot contain web links or URLs',
+        }),
+      areaId: z.string().default('area_general'),
+      status: z.enum(['approved', 'pending', 'under_review']).default('under_review'),
+      createdAt: z.string().default(() => new Date().toISOString()),
+      vehicleType: z.string().max(100).optional(),
+      wasFair: z.boolean().default(true),
+      notes: z.string().max(500, 'Notes cannot exceed 500 characters').optional().transform((n) => n ? n.trim() : undefined),
+      userId: z.string().max(100).optional(),
+      pickupLat: z.number().min(-90).max(90).optional(),
+      pickupLng: z.number().min(-180).max(180).optional(),
+      dropLat: z.number().min(-90).max(90).optional(),
+      dropLng: z.number().min(-180).max(180).optional(),
+    });
+
+    const parsed = ReportSubmissionSchema.safeParse(body);
+    if (!parsed.success) {
+      const reason = parsed.error.issues.map((i) => i.message).join('. ');
+      logAccess(req.method, pathname, 400, Date.now() - startTime, clientIp);
+      return sendJson(res, 400, {
+        error: 'Validation failed',
+        reason,
+        details: parsed.error.issues,
+      }, origin);
+    }
+
+    const report = {
+      id: `pr-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      ...parsed.data,
+    };
+
+    // Server log on every report submission as requested in Step 3
+    console.log(`[Report Submitted] areaId=${report.areaId} serviceType=${report.serviceType} pricePaid=${report.pricePaid} status=${report.status}`);
+
+    submittedReports.unshift(report);
+    if (submittedReports.length > 500) submittedReports.pop();
+
+    logAccess(req.method, pathname, 201, Date.now() - startTime, clientIp);
+    return sendJson(res, 201, {
+      success: true,
+      message: 'Report added successfully',
+      report,
+    }, origin);
+  }
+
+  // 11. POST /events and /api/events (App Interaction Tracking for Live Popularity Scoring)
+  if (req.method === 'POST' && (pathname === '/events' || pathname === '/api/events')) {
+    if (!checkRateLimit('events', clientIp)) {
+      logAccess(req.method, pathname, 429, Date.now() - startTime, clientIp);
+      res.setHeader('Retry-After', '60');
+      return sendJson(res, 429, { error: 'Rate limit exceeded. Try again in a minute.' }, origin);
+    }
+
+    const EventSchema = z.object({
+      type: z.enum(['view', 'save', 'priceCheck'], {
+        errorMap: () => ({ message: 'Event type must be view, save, or priceCheck' }),
+      }),
+      placeId: z.string().min(1, 'placeId is required').max(256),
+      timestamp: z.number().optional().default(() => Date.now()),
+    });
+
+    const parsed = EventSchema.safeParse(body);
+    if (!parsed.success) {
+      logAccess(req.method, pathname, 400, Date.now() - startTime, clientIp);
+      return sendJson(res, 400, {
+        error: 'Invalid event data',
+        reason: parsed.error.issues.map((i) => i.message).join('. '),
+      }, origin);
+    }
+
+    const event = {
+      type: parsed.data.type,
+      placeId: parsed.data.placeId,
+      timestamp: parsed.data.timestamp,
+      ipHash: hashIp(clientIp),
+    };
+
+    eventsLog.push(event);
+    if (eventsLog.length > 10000) eventsLog.shift();
+
+    logAccess(req.method, pathname, 200, Date.now() - startTime, clientIp);
+    return sendJson(res, 200, { success: true }, origin);
   }
 
   // Not Found

@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:http/http.dart' as http;
+import '../config/api_config.dart';
 import '../models/app_models.dart';
 import '../utils/report_security_validator.dart';
 
@@ -72,6 +74,27 @@ class LocalCommunityRepository implements CommunityRepository {
       reports.insertAll(0, userReports);
     }
 
+    // 3. Fetch remote reports from proxy if available
+    try {
+      final proxyUrl = Uri.parse('${ApiConfig.proxyBaseUrl}/reports');
+      final res = await http.get(proxyUrl).timeout(const Duration(seconds: 2));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body is Map && body['reports'] is List) {
+          final remoteList = (body['reports'] as List)
+              .map((e) => PriceReport.fromJson(e as Map<String, dynamic>))
+              .toList();
+          for (final rem in remoteList) {
+            if (!reports.any((r) => r.id == rem.id)) {
+              reports.insert(0, rem);
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Offline fallback
+    }
+
     _cachedReports = reports;
     return _cachedReports!;
   }
@@ -127,7 +150,9 @@ class LocalCommunityRepository implements CommunityRepository {
       dropLng: roundedDropLng,
     );
 
+    // Optimistic local update: insert immediately at the top
     allReports.insert(0, hardenedReport);
+    _cachedReports = allReports;
 
     final String? existingUser = prefs.getString(_userPriceReportsKey);
     List<dynamic> userList = [];
@@ -136,6 +161,54 @@ class LocalCommunityRepository implements CommunityRepository {
     }
     userList.insert(0, hardenedReport.toJson());
     await prefs.setString(_userPriceReportsKey, jsonEncode(userList));
+
+    // Submit to proxy server
+    try {
+      final proxyUrl = Uri.parse('${ApiConfig.proxyBaseUrl}/reports');
+      final payload = jsonEncode({
+        'serviceType': hardenedReport.serviceType.name,
+        'vehicleType': hardenedReport.vehicleType,
+        'routeOrPlace': hardenedReport.routeOrPlace,
+        'pricePaid': hardenedReport.pricePaid,
+        'areaId': hardenedReport.areaId,
+        'status': hardenedReport.status,
+        'createdAt': hardenedReport.createdAt.toIso8601String(),
+        'wasFair': hardenedReport.wasFair,
+        'notes': hardenedReport.notes,
+        'userId': hardenedReport.userId,
+        'pickupLat': hardenedReport.pickupLat,
+        'pickupLng': hardenedReport.pickupLng,
+        'dropLat': hardenedReport.dropLat,
+        'dropLng': hardenedReport.dropLng,
+      });
+
+      final res = await http.post(
+        proxyUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: payload,
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode >= 400 && res.body.isNotEmpty) {
+        // Rollback optimistic update on server validation error
+        allReports.remove(hardenedReport);
+        userList.removeWhere((u) => u['id'] == hardenedReport.id);
+        await prefs.setString(_userPriceReportsKey, jsonEncode(userList));
+
+        String errorMessage = 'Failed to submit report';
+        try {
+          final errBody = jsonDecode(res.body);
+          if (errBody is Map && errBody['reason'] != null) {
+            errorMessage = errBody['reason'].toString();
+          } else if (errBody is Map && errBody['error'] != null) {
+            errorMessage = errBody['error'].toString();
+          }
+        } catch (_) {}
+        throw StateError(errorMessage);
+      }
+    } catch (e) {
+      if (e is StateError) rethrow;
+      // Network timeout / offline: allow optimistic offline save to persist
+    }
   }
 
   @override

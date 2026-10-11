@@ -355,6 +355,9 @@ class PriceReport {
   final double? dropLng;
   final double pricePaid;
   final DateTime timestamp;
+  final DateTime createdAt;
+  final String areaId;
+  final String status;
   final bool wasFair;
   final String? photoEvidenceUrl;
   final String? notes;
@@ -363,7 +366,7 @@ class PriceReport {
   final int flagCount;
   final String? userId;
 
-  const PriceReport({
+  PriceReport({
     required this.id,
     required this.serviceType,
     required this.vehicleType,
@@ -373,7 +376,10 @@ class PriceReport {
     this.dropLat,
     this.dropLng,
     required this.pricePaid,
-    required this.timestamp,
+    DateTime? timestamp,
+    DateTime? createdAt,
+    this.areaId = 'area_general',
+    this.status = 'under_review',
     required this.wasFair,
     this.photoEvidenceUrl,
     this.notes,
@@ -381,7 +387,8 @@ class PriceReport {
     this.isFlagged = false,
     this.flagCount = 0,
     this.userId,
-  });
+  })  : timestamp = timestamp ?? DateTime.now(),
+        createdAt = createdAt ?? timestamp ?? DateTime.now();
 
   PriceReport copyWith({
     String? id,
@@ -394,6 +401,9 @@ class PriceReport {
     double? dropLng,
     double? pricePaid,
     DateTime? timestamp,
+    DateTime? createdAt,
+    String? areaId,
+    String? status,
     bool? wasFair,
     String? photoEvidenceUrl,
     String? notes,
@@ -412,6 +422,9 @@ class PriceReport {
     dropLng: dropLng ?? this.dropLng,
     pricePaid: pricePaid ?? this.pricePaid,
     timestamp: timestamp ?? this.timestamp,
+    createdAt: createdAt ?? this.createdAt,
+    areaId: areaId ?? this.areaId,
+    status: status ?? this.status,
     wasFair: wasFair ?? this.wasFair,
     photoEvidenceUrl: photoEvidenceUrl ?? this.photoEvidenceUrl,
     notes: notes ?? this.notes,
@@ -432,6 +445,9 @@ class PriceReport {
     'dropLng': dropLng,
     'pricePaid': pricePaid,
     'timestamp': timestamp.toIso8601String(),
+    'createdAt': createdAt.toIso8601String(),
+    'areaId': areaId,
+    'status': status,
     'wasFair': wasFair,
     'photoEvidenceUrl': photoEvidenceUrl,
     'notes': notes,
@@ -451,7 +467,12 @@ class PriceReport {
     dropLat: (json['dropLat'] as num?)?.toDouble(),
     dropLng: (json['dropLng'] as num?)?.toDouble(),
     pricePaid: (json['pricePaid'] as num).toDouble(),
-    timestamp: DateTime.parse(json['timestamp'] as String),
+    timestamp: DateTime.tryParse(json['timestamp'] as String? ?? '') ?? DateTime.now(),
+    createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ??
+        DateTime.tryParse(json['timestamp'] as String? ?? '') ??
+        DateTime.now(),
+    areaId: json['areaId'] as String? ?? 'area_general',
+    status: json['status'] as String? ?? 'under_review',
     wasFair: json['wasFair'] as bool? ?? true,
     photoEvidenceUrl: json['photoEvidenceUrl'] as String?,
     notes: json['notes'] as String?,

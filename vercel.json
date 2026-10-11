@@ -6,13 +6,19 @@
       "includeFiles": "proxy/**"
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/featured",
+      "schedule": "0 0 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api"
     },
     {
-      "source": "/(health|places/.*|geocode|route|resolve-link|explain|agent)",
+      "source": "/(health|places/.*|geocode|route|resolve-link|explain|agent|reports|events|cron/.*|featured.*)",
       "destination": "/api"
     },
     {
