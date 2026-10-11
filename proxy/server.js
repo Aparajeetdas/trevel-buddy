@@ -201,7 +201,7 @@ function parseJsonBody(req) {
       }
     }
     let raw = '';
-    const MAX_BYTES = 8192; // 8 KB
+    const MAX_BYTES = 32768; // 32 KB
     let exceeded = false;
 
     req.on('data', (chunk) => {
@@ -1531,9 +1531,13 @@ JSON format:
       messages: z.array(
         z.object({
           role: z.enum(['user', 'model']),
-          text: z.string().max(1000).transform((t) => t.trim()),
+          text: z.string().transform((t) => {
+            const trimmed = t.trim();
+            // Preserve rich context but clamp excessively long turns to 4000 chars
+            return trimmed.length > 4000 ? trimmed.slice(0, 4000) : trimmed;
+          }),
         })
-      ).min(1).max(12),
+      ).min(1).max(20),
       context: z.object({
         screen: z.string().default('home'),
         placeId: z.string().optional(),

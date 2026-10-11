@@ -90,6 +90,30 @@ class GeminiProxyService {
     'start_ride',
   };
 
+  /// Formats and windows chat history for the backend agent API
+  List<Map<String, String>> _formatHistoryForApi(List<AgentMessage> history) {
+    final sanitized = history
+        .where((m) => m.id != 'welcome' || history.length == 1)
+        .where((m) => m.text.trim().isNotEmpty)
+        .toList();
+
+    final windowed = sanitized.length > 10
+        ? sanitized.sublist(sanitized.length - 10)
+        : sanitized;
+
+    return windowed.map((m) {
+      final isUser = m.sender == 'user';
+      final text = m.text.trim();
+      final cappedText = (!isUser && text.length > 2000)
+          ? '${text.substring(0, 2000)}...'
+          : text;
+      return {
+        'role': isUser ? 'user' : 'model',
+        'text': cappedText,
+      };
+    }).toList();
+  }
+
   /// Request agent response with function calling & action suggestions
   Future<AgentMessage> sendAgentMessage({
     required List<AgentMessage> history,
@@ -101,10 +125,7 @@ class GeminiProxyService {
     String? idToken,
   }) async {
     final payload = {
-      'messages': history.map((m) => {
-        'role': m.sender == 'user' ? 'user' : 'model',
-        'text': m.text,
-      }).toList(),
+      'messages': _formatHistoryForApi(history),
       'context': {
         'screen': screen ?? 'home',
         'placeId': ?placeId,
@@ -200,10 +221,7 @@ class GeminiProxyService {
     void Function(AgentMessage finalMessage)? onComplete,
   }) async* {
     final payload = {
-      'messages': history.map((m) => {
-        'role': m.sender == 'user' ? 'user' : 'model',
-        'text': m.text,
-      }).toList(),
+      'messages': _formatHistoryForApi(history),
       'context': {
         'screen': screen ?? 'home',
         'placeId': ?placeId,
