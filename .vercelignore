@@ -1,0 +1,14 @@
+.dart_tool
+android
+ios
+linux
+macos
+windows
+test
+.git
+.idea
+.firebase
+build/test_cache
+build/unit_test_assets
+build/native_assets
+*.iml
