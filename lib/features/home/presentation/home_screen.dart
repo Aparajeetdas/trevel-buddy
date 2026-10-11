@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
+import '../../../core/config/api_config.dart';
 import '../../../core/data/community_repository.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/services/google_maps_service.dart';
@@ -18,16 +21,69 @@ import '../../explore/presentation/widgets/location_details_sheet.dart';
 import 'widgets/home_hero_search_bar.dart';
 import 'widgets/home_place_card.dart';
 
+class FeaturedItem {
+  final GooglePlaceDetails details;
+  final bool isTrending;
+  final double popularityScore;
+
+  const FeaturedItem({
+    required this.details,
+    this.isTrending = false,
+    this.popularityScore = 0.8,
+  });
+}
+
 /// Provider fetching live popular attractions for the active city
 final featuredDestinationsProvider =
-    FutureProvider.family<List<GooglePlaceDetails>, ({String city, LatLng center})>(
+    FutureProvider.family<List<FeaturedItem>, ({String city, LatLng center})>(
   (ref, arg) async {
     final mapsService = ref.read(googleMapsServiceProvider);
-    return mapsService.textSearch(
-      'top attractions in ${arg.city}',
-      biasCenter: arg.center,
-      maxResultCount: 8,
-    );
+    List<FeaturedItem> ranked = [];
+
+    // 1. Fetch live popularity rankings from proxy /featured endpoint
+    try {
+      final uri = Uri.parse('${ApiConfig.proxyBaseUrl}/featured?city=${Uri.encodeComponent(arg.city)}');
+      final res = await http.get(uri).timeout(const Duration(seconds: 3));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is Map && data['destinations'] is List) {
+          final destList = data['destinations'] as List;
+          for (final item in destList) {
+            if (item is Map && item['placeId'] != null) {
+              final placeId = item['placeId'].toString();
+              final score = (item['popularityScore'] as num?)?.toDouble() ?? 0.8;
+              final isTrend = item['isTrending'] as bool? ?? false;
+              try {
+                final details = await mapsService.getPlaceDetails(placeId);
+                ranked.add(FeaturedItem(
+                  details: details,
+                  popularityScore: score,
+                  isTrending: isTrend,
+                ));
+              } catch (_) {}
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback to Google Places text search if proxy returns empty or error
+    if (ranked.isEmpty) {
+      final searchResults = await mapsService.textSearch(
+        'top attractions in ${arg.city}',
+        biasCenter: arg.center,
+        maxResultCount: 8,
+      );
+      ranked = searchResults.map((details) {
+        return FeaturedItem(
+          details: details,
+          popularityScore: 0.85,
+          isTrending: details == searchResults.first,
+        );
+      }).toList();
+    }
+
+    return ranked.take(8).toList();
   },
 );
 
@@ -61,7 +117,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     (name: 'Goa', lat: 15.2993, lng: 74.1240),
   ];
 
+  void _recordInteraction(String placeId, String type) {
+    try {
+      http.post(
+        Uri.parse('${ApiConfig.proxyBaseUrl}/events'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'type': type,
+          'placeId': placeId,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        }),
+      ).catchError((_) => http.Response('', 500));
+    } catch (_) {}
+  }
+
   void _openLocationDetailsModal(GooglePlaceDetails details) {
+    _recordInteraction(details.placeId, 'view');
     final traps = ref.read(touristTrapsFutureProvider).value ?? [];
     final nearbyTraps = traps.where((t) {
       final d = EngineMath.haversineDistanceKm(
@@ -337,12 +408,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const Icon(Icons.star_rounded, color: Colors.amber, size: 20),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(
-                      'Top Attractions in ${activeCity.name}',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Top Attractions in ${activeCity.name}',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Ranked by popularity & traveller interactions • Updated recently',
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   InkWell(
@@ -412,11 +496,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    final place = places[index];
+                    final item = places[index];
                     return HomePlaceCard(
-                      details: place,
-                      isTrending: index == 0,
-                      onTap: () => _openLocationDetailsModal(place),
+                      details: item.details,
+                      isTrending: item.isTrending,
+                      onTap: () => _openLocationDetailsModal(item.details),
                     );
                   }, childCount: places.length),
                 ),

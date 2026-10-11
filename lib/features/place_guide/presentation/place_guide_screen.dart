@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -186,10 +187,20 @@ class _PlaceGuideScreenState extends ConsumerState<PlaceGuideScreen> {
         fit: StackFit.expand,
         children: [
           if (photo != null)
-            Image.network(
-              photo,
+            CachedNetworkImage(
+              imageUrl: photo,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _buildPlaceholderPhoto(details),
+              placeholder: (context, url) => Container(
+                color: Colors.grey.shade300,
+                child: const Center(
+                  child: SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              ),
+              errorWidget: (_, _, _) => _buildPlaceholderPhoto(details),
             )
           else
             _buildPlaceholderPhoto(details),
@@ -208,6 +219,27 @@ class _PlaceGuideScreenState extends ConsumerState<PlaceGuideScreen> {
               ),
             ),
           ),
+          // Author Attribution Overlay (Bottom Right)
+          if (details.attribution != null && details.attribution!.isNotEmpty)
+            Positioned(
+              bottom: AppSpacing.sm,
+              right: AppSpacing.md,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  details.attribution!,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           // Title & Rating Overlay
           Positioned(
             left: AppSpacing.md,

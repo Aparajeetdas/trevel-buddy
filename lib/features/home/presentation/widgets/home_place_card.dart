@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -39,11 +40,21 @@ class HomePlaceCard extends StatelessWidget {
                 AspectRatio(
                   aspectRatio: 16 / 9,
                   child: photoUrl != null
-                      ? Image.network(
-                          photoUrl,
+                      ? CachedNetworkImage(
+                          imageUrl: photoUrl,
                           width: double.infinity,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => _buildFallbackGradient(),
+                          placeholder: (context, url) => Container(
+                            color: Colors.grey.shade300,
+                            child: const Center(
+                              child: SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            ),
+                          ),
+                          errorWidget: (_, _, _) => _buildFallbackGradient(),
                         )
                       : _buildFallbackGradient(),
                 ),
@@ -63,6 +74,27 @@ class HomePlaceCard extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Author Attribution Overlay (Bottom Right)
+                if (details.attribution != null && details.attribution!.isNotEmpty)
+                  Positioned(
+                    bottom: 6,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        details.attribution!,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
                 // Trending Badge (Top Right)
                 if (isTrending)
                   Positioned(

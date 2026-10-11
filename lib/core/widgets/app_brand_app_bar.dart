@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/google_maps_service.dart';
 import '../theme/app_theme.dart';
 import 'search_debug_sheet.dart';
 
@@ -36,8 +38,44 @@ class AppBrandAppBar extends ConsumerWidget implements PreferredSizeWidget {
               onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
             )
           : GestureDetector(
-              onLongPress: () {
-                SearchDebugSheet.show(context);
+              onLongPress: () async {
+                final action = await showModalBottomSheet<String>(
+                  context: context,
+                  builder: (ctx) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.restart_alt_rounded, color: AppColors.primary),
+                          title: const Text('Reset to First Visit Mode'),
+                          subtitle: const Text('Clears active city, recent searches, and triggers city chooser'),
+                          onTap: () => Navigator.pop(ctx, 'reset'),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.bug_report_rounded),
+                          title: const Text('Open Search Debugger'),
+                          onTap: () => Navigator.pop(ctx, 'debug'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+
+                if (action == 'reset') {
+                  await ref.read(activeCityProvider.notifier).clearActiveCity();
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.remove('travel_buddy_recent_searches');
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('First-visit flow reset: Active city and searches cleared.'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  }
+                } else if (action == 'debug' && context.mounted) {
+                  SearchDebugSheet.show(context);
+                }
               },
               child: Padding(
                 padding: const EdgeInsets.only(left: 16.0),

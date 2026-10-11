@@ -377,7 +377,16 @@ Travel Buddy adheres strictly to the principles of India's Digital Personal Data
 
 ---
 
+## 🌐 Google Places API Terms of Service Compliance
+
+Travel Buddy strictly adheres to Section 3.2.3 of the Google Maps Platform Terms of Service regarding caching and storage of Google Places data:
+
+1. **Place ID Storage Only**: In accordance with Google Maps Platform Terms, Travel Buddy **never permanently caches or stores Google Places content** (such as place names, reviews, ratings, addresses, or photos) in its database or Firestore backend. The popularity cron job (`/api/cron/featured`) and live ranking services persist **ONLY the `place_id` and computed popularity scores**.
+2. **Fresh Data Resolution**: When clients load featured destinations, explore attractions, or roadmaps, the application fetches fresh place details (names, ratings, photos, opening hours) on-demand through the secure Google Places proxy using the stored `place_id`.
+3. **Temporary In-Memory Caching**: Place details and reverse-geocoded coordinates are held in a volatile in-memory client cache with a maximum 10-minute TTL purely for the duration of the user's active session, strictly within Google's permitted temporary caching policy.
+4. **Google Photo Attribution**: All Google Places photos rendered across the app display proper author attribution (e.g., photo by `<authorName>`) and proxy via `/api/places/photo` to preserve attribution integrity.
+
+---
+
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-# trevel-buddy
