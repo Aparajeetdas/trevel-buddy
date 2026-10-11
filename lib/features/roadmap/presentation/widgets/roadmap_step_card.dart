@@ -41,17 +41,9 @@ class RoadmapStepCard extends StatelessWidget {
     }
   }
 
-  Future<void> _openTurnByTurn(BuildContext context) async {
-    final mode = step.mode == 'walk' ? 'walking' : 'driving';
+  void _openTurnByTurn(BuildContext context) {
     final mapLauncher = MapLauncherService();
-    await mapLauncher.openDirections(
-      origin: '${step.startLat},${step.startLng}',
-      destination: '${step.endLat},${step.endLng}',
-      originName: step.fromName,
-      destName: step.toName,
-      mode: mode,
-      context: context,
-    );
+    mapLauncher.openStepDirectionsSynchronously(step: step);
   }
 
   void _openPriceChecker(BuildContext context) {

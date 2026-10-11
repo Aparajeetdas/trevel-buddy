@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:travel_buddy/core/data/local_data_repository.dart';
 import 'package:travel_buddy/core/data/community_repository.dart';
 import 'package:travel_buddy/core/models/app_models.dart';
 import 'package:travel_buddy/core/services/google_maps_service.dart';
@@ -19,7 +18,15 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({
-      'travel_buddy_recent_explore_searches': ['Hawa Mahal', 'Amer Fort'],
+      'travel_buddy_recent_places_v4': [
+        jsonEncode({'id': 'p1', 'name': 'Hawa Mahal'}),
+        jsonEncode({'id': 'p2', 'name': 'Amer Fort'}),
+      ],
+      'travel_buddy_active_city_v1': jsonEncode({
+        'name': 'Jaipur',
+        'centerLat': 26.9124,
+        'centerLng': 75.7873,
+      }),
     });
   });
 
@@ -61,7 +68,7 @@ void main() {
     });
 
     test(
-      '2. Autocomplete falls back gracefully to seed places when proxy fails',
+      '2. Autocomplete throws on server 500 without seed fallback',
       () async {
         final mockClient = MockClient((request) async {
           return http.Response('Server error', 500);
@@ -72,38 +79,7 @@ void main() {
           proxyBaseUrl: 'http://localhost:8080',
         );
 
-        final List<Place> seedPlaces = [
-          Place.fromJson({
-            'id': 'seed_hawa',
-            'name': 'Hawa Mahal',
-            'state': 'Rajasthan',
-            'category': 'Attractions',
-            'rating': 4.6,
-            'reviewsCount': 310,
-            'coverPhoto': 'https://example.com/hawa.jpg',
-            'gallery': [],
-            'description': 'Wind Palace',
-            'latitude': 26.9239,
-            'longitude': 75.8267,
-            'scamRisk': 'Medium',
-            'bestTimeToVisit': 'October to March',
-            'transportOptions': [],
-            'routeWarnings': [],
-            'foodVenues': [],
-            'stays': [],
-            'scamAlerts': [],
-            'reviews': [],
-            'verifiedBusinesses': [],
-          }),
-        ];
-
-        final suggestions = await service.autocomplete(
-          'Hawa',
-          seedPlaces: seedPlaces,
-        );
-        expect(suggestions.length, 1);
-        expect(suggestions.first.placeId, 'seed_hawa');
-        expect(suggestions.first.mainText, 'Hawa Mahal');
+        expect(() => service.autocomplete('Hawa'), throwsException);
       },
     );
 
@@ -251,36 +227,8 @@ void main() {
       testWidgets(
         '7. ExploreScreen renders search, 8 categories, and import card',
         (tester) async {
-          final List<Place> mockPlaces = [
-            Place.fromJson({
-              'id': 'p1',
-              'name': 'Hawa Mahal',
-              'state': 'Rajasthan',
-              'category': 'Attractions',
-              'rating': 4.7,
-              'reviewsCount': 1500,
-              'coverPhoto': 'https://example.com/hawa.jpg',
-              'gallery': [],
-              'description': 'Iconic palace of winds',
-              'latitude': 26.9239,
-              'longitude': 75.8267,
-              'scamRisk': 'Medium',
-              'bestTimeToVisit': 'October to March',
-              'transportOptions': [],
-              'routeWarnings': [],
-              'foodVenues': [],
-              'stays': [],
-              'scamAlerts': [],
-              'reviews': [],
-              'verifiedBusinesses': [],
-            }),
-          ];
-
           final container = ProviderContainer(
             overrides: [
-              placesFutureProvider.overrideWith(
-                (ref) => Future.value(mockPlaces),
-              ),
               areaInsightsFutureProvider.overrideWith(
                 (ref) => Future.value([
                   AreaInsight(
@@ -321,10 +269,9 @@ void main() {
           await tester.pumpAndSettle();
 
           // 1. Search Bar & recent searches
-          expect(
-            find.byType(TextField),
-            findsNWidgets(2),
-          ); // Search field + link import field
+          expect(find.byType(TextField), findsAtLeastNWidgets(1));
+          await tester.tap(find.byType(TextField).first);
+          await tester.pumpAndSettle();
           expect(find.text('Recent searches'), findsOneWidget);
 
           // 2. Category Chips (Restaurants, Cafes, Hotels, Attractions, etc.)
@@ -334,7 +281,12 @@ void main() {
           expect(find.text('Attractions'), findsWidgets);
           expect(find.text('Taxi stands'), findsOneWidget);
 
-          // 3. Import from Google Maps card
+          // 3. Scroll to Import from Google Maps card
+          await tester.drag(
+            find.byType(CustomScrollView),
+            const Offset(0, -400),
+          );
+          await tester.pumpAndSettle();
           expect(find.text('Import from Google Maps'), findsOneWidget);
           expect(find.text('Inspect & Resolve Link'), findsOneWidget);
 

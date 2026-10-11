@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../models/roadmap_models.dart';
+
 enum PreferredMapApp {
   googleMaps('Google Maps'),
   waze('Waze'),
@@ -86,6 +88,49 @@ class MapLauncherService {
       url += '&query_place_id=${Uri.encodeComponent(placeId)}';
     }
     return url;
+  }
+
+  /// Builds Google Maps directions URL from structured objects
+  /// `https://www.google.com/maps/dir/?api=1&origin=<origin>&origin_place_id=<id>&destination=<dest>&destination_place_id=<id>&travelmode=<mode>`
+  static String buildGoogleMapsDirectionsUrlFromObjects({
+    RoadmapLocation? origin,
+    required RoadmapLocation destination,
+    String mode = 'driving',
+    List<String> waypoints = const [],
+  }) {
+    final validMode = _normalizeTravelMode(mode);
+    final buffer = StringBuffer('https://www.google.com/maps/dir/?api=1');
+
+    // Origin: For "My location" or null origin, omit origin
+    if (origin != null && !origin.isMyLocation) {
+      final originVal = origin.name.trim().isNotEmpty
+          ? origin.name.trim()
+          : '${origin.lat},${origin.lng}';
+      buffer.write('&origin=${Uri.encodeComponent(originVal)}');
+      if (origin.placeId != null && origin.placeId!.isNotEmpty) {
+        buffer.write('&origin_place_id=${Uri.encodeComponent(origin.placeId!)}');
+      }
+    }
+
+    // Destination
+    final destVal = destination.name.trim().isNotEmpty
+        ? destination.name.trim()
+        : '${destination.lat},${destination.lng}';
+    buffer.write('&destination=${Uri.encodeComponent(destVal)}');
+    if (destination.placeId != null && destination.placeId!.isNotEmpty) {
+      buffer.write('&destination_place_id=${Uri.encodeComponent(destination.placeId!)}');
+    }
+
+    // Travelmode
+    buffer.write('&travelmode=${Uri.encodeComponent(validMode)}');
+
+    // Waypoints (max 9 joined with |)
+    if (waypoints.isNotEmpty) {
+      final joined = waypoints.take(9).join('|');
+      buffer.write('&waypoints=${Uri.encodeComponent(joined)}');
+    }
+
+    return buffer.toString();
   }
 
   /// Builds Google Maps directions URL
@@ -224,6 +269,71 @@ class MapLauncherService {
       lng: lng,
     );
     return _launchUrlString(url);
+  }
+
+  /// Synchronously opens full route navigation directly inside user gesture (popup-safe)
+  bool openDirectionsSynchronously({
+    RoadmapLocation? origin,
+    required RoadmapLocation destination,
+    String mode = 'driving',
+    List<String> waypoints = const [],
+  }) {
+    if (_cachedApp == PreferredMapApp.waze) {
+      final wazeUrl = buildWazeUrl(destination.lat, destination.lng);
+      _launchUrlDirect(wazeUrl);
+      return true;
+    }
+    if (_cachedApp == PreferredMapApp.appleMaps) {
+      final appleUrl = buildAppleMapsUrl(
+        destination.lat,
+        destination.lng,
+        name: destination.name,
+      );
+      _launchUrlDirect(appleUrl);
+      return true;
+    }
+    final googleUrl = buildGoogleMapsDirectionsUrlFromObjects(
+      origin: origin,
+      destination: destination,
+      mode: mode,
+      waypoints: waypoints,
+    );
+    _launchUrlDirect(googleUrl);
+    return true;
+  }
+
+  /// Synchronously opens single step navigation directly inside user gesture (popup-safe)
+  bool openStepDirectionsSynchronously({
+    required RoadmapStep step,
+  }) {
+    final stepOrigin = RoadmapLocation(
+      name: step.fromName,
+      lat: step.startLat,
+      lng: step.startLng,
+    );
+    final stepDest = RoadmapLocation(
+      name: step.toName,
+      lat: step.endLat,
+      lng: step.endLng,
+    );
+    return openDirectionsSynchronously(
+      origin: stepOrigin,
+      destination: stepDest,
+      mode: step.mode,
+    );
+  }
+
+  void _launchUrlDirect(String urlStr) {
+    if (!isAllowedMapUrl(urlStr)) {
+      debugPrint('[SECURITY] Rejected map URL: $urlStr');
+      return;
+    }
+    final uri = Uri.parse(urlStr);
+    launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+      webOnlyWindowName: '_blank',
+    );
   }
 
   Future<bool> openDirections({

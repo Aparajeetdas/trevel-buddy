@@ -1,7 +1,5 @@
-import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/community_repository.dart';
@@ -27,32 +25,13 @@ class RoadmapService {
   final CommunityRepository communityRepo;
   final GoogleMapsService googleMapsService;
 
-  List<Roadmap>? _curatedCache;
-
   RoadmapService({
     required this.tariffRepo,
     required this.communityRepo,
     required this.googleMapsService,
   });
 
-  /// Loads curated hand-written roadmaps from assets
-  Future<List<Roadmap>> getCuratedRoadmaps() async {
-    if (_curatedCache != null) return _curatedCache!;
-    try {
-      final jsonStr = await rootBundle.loadString(
-        'assets/data/curated_roadmaps.json',
-      );
-      final list = jsonDecode(jsonStr) as List<dynamic>;
-      _curatedCache = list
-          .map((e) => Roadmap.fromJson(e as Map<String, dynamic>))
-          .toList();
-      return _curatedCache!;
-    } catch (_) {
-      return [];
-    }
-  }
-
-  /// Primary builder: produces a complete multi-option Journey Roadmap
+  /// Primary builder: produces a complete multi-option Journey Roadmap live via Routes API
   Future<Roadmap> planRoadmap({
     required RoadmapLocation origin,
     required RoadmapLocation destination,
@@ -63,39 +42,8 @@ class RoadmapService {
     final effectiveTime = departTime ?? DateTime.now();
     final tariffs = await tariffRepo.getTariffs();
     final traps = await communityRepo.getTouristTraps();
-    final curatedList = await getCuratedRoadmaps();
 
-    // 1. Check curated roadmaps first
-    final curatedMatch = _findCuratedMatch(curatedList, origin, destination);
-
-    final List<RoadmapOption> options = [];
-
-    if (curatedMatch != null) {
-      for (final opt in curatedMatch.options) {
-        // Attach nearby traps & enrich step pricing
-        final enrichedSteps = _enrichSteps(
-          opt.steps,
-          traps,
-          tariffs,
-          effectiveTime,
-        );
-        options.add(
-          RoadmapOption(
-            id: opt.id,
-            label: opt.label == 'Local guide' ? 'Local guide' : opt.label,
-            totalMin: opt.totalMin,
-            totalFairMin: _sumFairMin(enrichedSteps),
-            totalFairMax: _sumFairMax(enrichedSteps),
-            riskLevel: _computeOptionRisk(enrichedSteps),
-            steps: enrichedSteps,
-            isCurated: true,
-            summaryOneLiner: opt.summaryOneLiner,
-          ),
-        );
-      }
-    }
-
-    // 2. Generate multi-modal options via Google Routes API or fallback
+    // Generate multi-modal options via Google Routes API only
     final generatedOptions = await _generateOptions(
       origin: origin,
       destination: destination,
@@ -104,20 +52,12 @@ class RoadmapService {
       traps: traps,
     );
 
-    // Merge options avoiding duplicate labels
-    for (final gen in generatedOptions) {
-      if (!options.any(
-        (o) => o.label.toLowerCase() == gen.label.toLowerCase(),
-      )) {
-        options.add(gen);
-      }
-    }
+    final List<RoadmapOption> options = List.from(generatedOptions);
 
-    // Sort options so curated or selected preference is first
+    // Sort options so selected preference is first
     options.sort((a, b) {
-      if (a.isCurated) return -1;
-      if (b.isCurated) return 1;
       if (a.label.toLowerCase() == preference.toLowerCase()) return -1;
+      if (b.label.toLowerCase() == preference.toLowerCase()) return 1;
       return 0;
     });
 
@@ -142,41 +82,9 @@ class RoadmapService {
     );
   }
 
-  Roadmap? _findCuratedMatch(
-    List<Roadmap> curatedList,
-    RoadmapLocation origin,
-    RoadmapLocation destination,
-  ) {
-    for (final c in curatedList) {
-      final originDist = _haversineMeters(
-        origin.lat,
-        origin.lng,
-        c.origin.lat,
-        c.origin.lng,
-      );
-      final destDist = _haversineMeters(
-        destination.lat,
-        destination.lng,
-        c.destination.lat,
-        c.destination.lng,
-      );
 
-      final originNameMatch = _nameMatches(origin.name, c.origin.name);
-      final destNameMatch = _nameMatches(destination.name, c.destination.name);
 
-      if ((originDist < 2500 || originNameMatch) &&
-          (destDist < 2500 || destNameMatch)) {
-        return c;
-      }
-    }
-    return null;
-  }
 
-  bool _nameMatches(String a, String b) {
-    final cleanA = a.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-    final cleanB = b.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
-    return cleanA.contains(cleanB) || cleanB.contains(cleanA);
-  }
 
   Future<List<RoadmapOption>> _generateOptions({
     required RoadmapLocation origin,
@@ -608,50 +516,7 @@ class RoadmapService {
     ];
   }
 
-  List<RoadmapStep> _enrichSteps(
-    List<RoadmapStep> steps,
-    List<TouristTrap> traps,
-    List<GovTariff> tariffs,
-    DateTime departTime,
-  ) {
-    return steps.map((s) {
-      final nearby = _findTrapsNear(
-        s.startLat,
-        s.startLng,
-        traps,
-        ServiceType.fromString(s.mode),
-      );
-      return RoadmapStep(
-        index: s.index,
-        mode: s.mode,
-        title: s.title,
-        instruction: s.instruction,
-        fromName: s.fromName,
-        toName: s.toName,
-        startLat: s.startLat,
-        startLng: s.startLng,
-        endLat: s.endLat,
-        endLng: s.endLng,
-        distanceM: s.distanceM,
-        durationMin: s.durationMin,
-        polyline: s.polyline,
-        fairMin: s.fairMin,
-        fairMax: s.fairMax,
-        dontPayMoreThan: s.dontPayMoreThan,
-        priceSource: s.priceSource,
-        confidence: s.confidence,
-        boardingPoint: s.boardingPoint,
-        warnings: [
-          ...s.warnings,
-          if (nearby.isNotEmpty)
-            'Warning: Trap reported nearby (${nearby.first.type})',
-        ],
-        tips: s.tips,
-        trapIds: nearby.map((t) => t.id).toList(),
-        traps: nearby,
-      );
-    }).toList();
-  }
+
 
   List<TouristTrap> _findTrapsNear(
     double lat,

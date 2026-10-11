@@ -441,12 +441,11 @@ class SearchDebugSheet extends ConsumerWidget {
   Future<void> _resetDemoData(BuildContext context, WidgetRef ref) async {
     final repo = ref.read(appRepositoryProvider);
     await repo.resetAllData();
-    ref.invalidate(placesFutureProvider);
+    await ref.read(activeCityProvider.notifier).clearActiveCity();
     ref.invalidate(scamZonesFutureProvider);
     ref.invalidate(fairPricesFutureProvider);
     ref.invalidate(driversFutureProvider);
     ref.invalidate(scamReportsNotifierProvider);
-    ref.invalidate(businessProfileNotifierProvider);
     ref.invalidate(fareRulesFutureProvider);
 
     if (context.mounted) {

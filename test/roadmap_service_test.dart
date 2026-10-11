@@ -28,16 +28,16 @@ void main() {
   });
 
   group('RoadmapService & Engine Unit Tests', () {
-    test('1. Curated roadmap override: Jaipur Junction to Amer Fort matches and provides Local guide option', () async {
+    test('1. Dynamic roadmap generation: Computes multi-modal options via live engine', () async {
       const origin = RoadmapLocation(
-        name: 'Jaipur Junction',
-        lat: 26.9200,
-        lng: 75.7878,
+        name: 'Guwahati Railway Station',
+        lat: 26.1822,
+        lng: 91.7512,
       );
       const destination = RoadmapLocation(
-        name: 'Amer Fort',
-        lat: 26.9855,
-        lng: 75.8513,
+        name: 'Kamakhya Temple',
+        lat: 26.1664,
+        lng: 91.7055,
       );
 
       final roadmap = await roadmapService.planRoadmap(
@@ -46,13 +46,12 @@ void main() {
       );
 
       expect(roadmap.options.isNotEmpty, isTrue);
-      final curatedOption = roadmap.options.firstWhere((o) => o.isCurated);
-      expect(curatedOption.label, anyOf('Local guide', 'Fastest'));
-      expect(curatedOption.steps.length, greaterThanOrEqualTo(1));
-      expect(curatedOption.totalFairMin, greaterThan(0));
+      final firstOption = roadmap.options.first;
+      expect(firstOption.steps.length, greaterThanOrEqualTo(1));
+      expect(firstOption.totalFairMin, greaterThan(0));
       expect(
-        curatedOption.totalFairMax,
-        greaterThanOrEqualTo(curatedOption.totalFairMin),
+        firstOption.totalFairMax,
+        greaterThanOrEqualTo(firstOption.totalFairMin),
       );
     });
 

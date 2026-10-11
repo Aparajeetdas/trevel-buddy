@@ -8,8 +8,6 @@ import '../models/app_models.dart';
 import '../utils/async_utils.dart';
 
 abstract class AppDataRepository {
-  Future<List<Place>> getPlaces();
-  Future<Place?> getPlaceById(String id);
   Future<List<Driver>> getDrivers();
   Future<Driver?> getDriverByVehicleNumber(String vehicleNumber);
   Future<List<ScamReportZone>> getScamReportZones();
@@ -17,41 +15,16 @@ abstract class AppDataRepository {
   Future<List<FareRule>> getFareRules();
   Future<List<ScamReport>> getScamReports();
   Future<void> submitScamReport(ScamReport report);
-  Future<List<BusinessProfile>> getBusinessProfiles();
-  Future<void> saveBusinessProfile(BusinessProfile profile);
   Future<void> resetAllData();
 }
 
 class LocalAppDataRepository implements AppDataRepository {
   static const String _userReportsKey = 'travel_buddy_user_reports_v1';
-  static const String _userBusinessKey = 'travel_buddy_business_profiles_v1';
 
-  List<Place>? _cachedPlaces;
   List<Driver>? _cachedDrivers;
   List<ScamReportZone>? _cachedScamZones;
   List<FairPrice>? _cachedFairPrices;
   List<FareRule>? _cachedFareRules;
-
-  @override
-  Future<List<Place>> getPlaces() async {
-    if (_cachedPlaces != null) return _cachedPlaces!;
-    final String raw = await rootBundle.loadString('assets/data/places.json');
-    final List<dynamic> list = jsonDecode(raw) as List<dynamic>;
-    _cachedPlaces = list
-        .map((e) => Place.fromJson(e as Map<String, dynamic>))
-        .toList();
-    return _cachedPlaces!;
-  }
-
-  @override
-  Future<Place?> getPlaceById(String id) async {
-    final places = await getPlaces();
-    try {
-      return places.firstWhere((p) => p.id == id);
-    } catch (_) {
-      return null;
-    }
-  }
 
   @override
   Future<List<Driver>> getDrivers() async {
@@ -128,25 +101,25 @@ class LocalAppDataRepository implements AppDataRepository {
     final prefs = await SharedPreferences.getInstance();
     final String? stored = prefs.getString(_userReportsKey);
     if (stored == null || stored.isEmpty) {
-      // Return 2 default initial reports
+      // Return 2 sample reports unlinked from removed place records
       return [
         ScamReport(
           id: 'REP-7429',
           incidentType: 'Auto Rickshaw Overcharge',
-          placeName: 'Jaipur Pink City',
+          placeName: 'City Transit Zone (Sample)',
           amountLost: 450.0,
           description:
-              'Demanded ₹500 for a 2 km ride from Hawa Mahal to City Palace.',
+              'Demanded ₹500 for a 2 km ride.',
           timestamp: DateTime.now().subtract(const Duration(days: 2)),
           status: 'Under Review',
         ),
         ScamReport(
           id: 'REP-8104',
           incidentType: 'Fake Tour Guide',
-          placeName: 'Amer Fort, Jaipur',
+          placeName: 'Heritage Monument Area (Sample)',
           amountLost: 1200.0,
           description:
-              'Claimed official ASI guide certification but led to gem store.',
+              'Claimed official guide certification but led to gem store.',
           timestamp: DateTime.now().subtract(const Duration(days: 5)),
           status: 'Verified Warning',
         ),
@@ -168,34 +141,9 @@ class LocalAppDataRepository implements AppDataRepository {
   }
 
   @override
-  Future<List<BusinessProfile>> getBusinessProfiles() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? stored = prefs.getString(_userBusinessKey);
-    if (stored == null || stored.isEmpty) {
-      return [];
-    }
-    final List<dynamic> list = jsonDecode(stored) as List<dynamic>;
-    return list
-        .map((e) => BusinessProfile.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  @override
-  Future<void> saveBusinessProfile(BusinessProfile profile) async {
-    final prefs = await SharedPreferences.getInstance();
-    final profiles = await getBusinessProfiles();
-    profiles.removeWhere((p) => p.id == profile.id);
-    profiles.insert(0, profile);
-    final String encoded = jsonEncode(profiles.map((e) => e.toJson()).toList());
-    await prefs.setString(_userBusinessKey, encoded);
-  }
-
-  @override
   Future<void> resetAllData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userReportsKey);
-    await prefs.remove(_userBusinessKey);
-    _cachedPlaces = null;
     _cachedDrivers = null;
     _cachedScamZones = null;
     _cachedFairPrices = null;
@@ -206,17 +154,6 @@ class LocalAppDataRepository implements AppDataRepository {
 // Riverpod Provider
 final appRepositoryProvider = Provider<AppDataRepository>((ref) {
   return LocalAppDataRepository();
-});
-
-// StateNotifier / FutureProviders for reactive UI
-final placesFutureProvider = FutureProvider<List<Place>>((ref) async {
-  final repo = ref.watch(appRepositoryProvider);
-  return withTimeout(
-    repo.getPlaces(),
-    timeout: const Duration(seconds: 4),
-    fallback: <Place>[],
-    operationName: 'Load Places',
-  );
 });
 
 final scamZonesFutureProvider = FutureProvider<List<ScamReportZone>>((
@@ -288,33 +225,4 @@ class ScamReportsNotifier extends AsyncNotifier<List<ScamReport>> {
 final scamReportsNotifierProvider =
     AsyncNotifierProvider<ScamReportsNotifier, List<ScamReport>>(
       ScamReportsNotifier.new,
-    );
-
-class BusinessProfileNotifier extends AsyncNotifier<List<BusinessProfile>> {
-  @override
-  Future<List<BusinessProfile>> build() async {
-    final repo = ref.watch(appRepositoryProvider);
-    return repo.getBusinessProfiles();
-  }
-
-  Future<void> loadProfiles() async {
-    ref.invalidateSelf();
-  }
-
-  Future<void> addProfile(BusinessProfile profile) async {
-    final repo = ref.read(appRepositoryProvider);
-    await repo.saveBusinessProfile(profile);
-    ref.invalidateSelf();
-  }
-
-  Future<void> reset() async {
-    final repo = ref.read(appRepositoryProvider);
-    await repo.resetAllData();
-    ref.invalidateSelf();
-  }
-}
-
-final businessProfileNotifierProvider =
-    AsyncNotifierProvider<BusinessProfileNotifier, List<BusinessProfile>>(
-      BusinessProfileNotifier.new,
     );

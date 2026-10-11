@@ -3,31 +3,39 @@ import 'price_engine_models.dart';
 
 /// Location coordinates and title for roadmap origin/destination
 class RoadmapLocation {
+  final String? placeId;
   final String name;
   final double lat;
   final double lng;
   final String? formattedAddress;
+  final bool isMyLocation;
 
   const RoadmapLocation({
+    this.placeId,
     required this.name,
     required this.lat,
     required this.lng,
     this.formattedAddress,
+    this.isMyLocation = false,
   });
 
   Map<String, dynamic> toJson() => {
+    'placeId': placeId,
     'name': name,
     'lat': lat,
     'lng': lng,
     'formattedAddress': formattedAddress,
+    'isMyLocation': isMyLocation,
   };
 
   factory RoadmapLocation.fromJson(Map<String, dynamic> json) =>
       RoadmapLocation(
+        placeId: json['placeId'] as String?,
         name: json['name'] as String? ?? 'Location',
         lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
         lng: (json['lng'] as num?)?.toDouble() ?? 0.0,
         formattedAddress: json['formattedAddress'] as String?,
+        isMyLocation: json['isMyLocation'] as bool? ?? false,
       );
 }
 
@@ -177,6 +185,8 @@ class RoadmapOption {
     this.isEstimatedRoute = false,
     required this.summaryOneLiner,
   });
+
+  String get primaryMode => steps.isNotEmpty ? steps.first.mode : 'driving';
 
   Map<String, dynamic> toJson() => {
     'id': id,

@@ -6,48 +6,46 @@ import '../../../../core/models/roadmap_models.dart';
 import '../../../../core/services/map_launcher_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_card.dart';
-import '../../../../core/widgets/risk_badge.dart';
-import '../../../roadmap/presentation/roadmap_screen.dart';
 
 class HomePlaceCard extends StatelessWidget {
-  final Place place;
+  final GooglePlaceDetails details;
+  final bool isTrending;
+  final VoidCallback? onTap;
 
-  const HomePlaceCard({super.key, required this.place});
+  const HomePlaceCard({
+    super.key,
+    required this.details,
+    this.isTrending = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final lowestFairRate = place.transportOptions.isNotEmpty
-        ? place.transportOptions
-              .map((t) => t.fairMin)
-              .reduce((a, b) => a < b ? a : b)
-        : 50.0;
+    final photoUrl = details.photoUrls.isNotEmpty ? details.photoUrls.first : null;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: AppCard(
         padding: EdgeInsets.zero,
         elevation: 2,
-        onTap: () => context.push('/place/${place.id}'),
+        onTap: onTap ?? () => context.push('/place/${details.placeId}'),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Big Hero Photo with Scam Risk Badge & Location Overlay
+            // Big Hero Photo with Rating, Trending Badge & Overlay
             Stack(
               children: [
                 AspectRatio(
                   aspectRatio: 16 / 9,
-                  child: Image.network(
-                    place.coverPhoto,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: Colors.grey.shade300,
-                      child: const Center(
-                        child: Icon(Icons.landscape_rounded, size: 48),
-                      ),
-                    ),
-                  ),
+                  child: photoUrl != null
+                      ? Image.network(
+                          photoUrl,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => _buildFallbackGradient(),
+                        )
+                      : _buildFallbackGradient(),
                 ),
                 // Scrim Gradient Overlay
                 Positioned.fill(
@@ -65,47 +63,87 @@ class HomePlaceCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Scam-risk badge (Top Right)
-                Positioned(
-                  top: AppSpacing.sm + 4,
-                  right: AppSpacing.sm + 4,
-                  child: RiskBadge(risk: place.scamRisk),
-                ),
-                // Rating Badge (Top Left)
-                Positioned(
-                  top: AppSpacing.sm + 4,
-                  left: AppSpacing.sm + 4,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.65),
-                      borderRadius: BorderRadius.circular(AppRadius.sm),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          size: 16,
-                          color: Colors.amber,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          place.rating.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
+                // Trending Badge (Top Right)
+                if (isTrending)
+                  Positioned(
+                    top: AppSpacing.sm + 4,
+                    right: AppSpacing.sm + 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.deepOrangeAccent,
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.deepOrangeAccent.withOpacity(0.4),
+                            blurRadius: 6,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.trending_up_rounded, size: 14, color: Colors.white),
+                          SizedBox(width: 4),
+                          Text(
+                            'TRENDING',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 10,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                // Place Name & State (Bottom Left)
+                // Rating Badge (Top Left)
+                if (details.rating != null)
+                  Positioned(
+                    top: AppSpacing.sm + 4,
+                    left: AppSpacing.sm + 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.65),
+                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.star_rounded,
+                            size: 16,
+                            color: Colors.amber,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            details.rating.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                          if (details.userRatingCount != null) ...[
+                            const SizedBox(width: 3),
+                            Text(
+                              '(${details.userRatingCount})',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                // Place Name & Address (Bottom Left)
                 Positioned(
                   left: AppSpacing.md,
                   right: AppSpacing.md,
@@ -114,10 +152,10 @@ class HomePlaceCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        place.name,
+                        details.name,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 19,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.3,
                           shadows: [Shadow(color: Colors.black, blurRadius: 4)],
@@ -129,15 +167,19 @@ class HomePlaceCard extends StatelessWidget {
                           const Icon(
                             Icons.location_on_rounded,
                             size: 14,
-                            color: AppColors.primaryDark,
+                            color: Colors.white70,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            place.state,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                          Expanded(
+                            child: Text(
+                              details.formattedAddress,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -153,14 +195,31 @@ class HomePlaceCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    place.description,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
-                  ),
+                  if (details.editorialSummary != null)
+                    Text(
+                      details.editorialSummary!,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+                    )
+                  else
+                    Text(
+                      details.formattedAddress,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+                    ),
                   const SizedBox(height: AppSpacing.md),
-                  // Key Highlights
+                  // Google Author Attribution if required
+                  if (details.attribution != null && details.attribution!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                      child: Text(
+                        details.attribution!,
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ),
+                  // Key Action Chips
                   Wrap(
                     spacing: AppSpacing.xs,
                     runSpacing: AppSpacing.xs,
@@ -168,21 +227,16 @@ class HomePlaceCard extends StatelessWidget {
                     children: [
                       _buildChip(
                         icon: Icons.currency_rupee_rounded,
-                        label:
-                            'Fair from ₹${lowestFairRate.toStringAsFixed(0)}',
+                        label: 'Fair Auto ~₹80-150',
                         color: AppColors.success,
-                      ),
-                      _buildChip(
-                        icon: Icons.directions_bus_rounded,
-                        label: '${place.transportOptions.length} routes',
-                        color: AppColors.primary,
                       ),
                       InkWell(
                         onTap: () {
                           MapLauncherService().openPlace(
-                            name: place.name,
-                            lat: place.latitude,
-                            lng: place.longitude,
+                            placeId: details.placeId,
+                            name: details.name,
+                            lat: details.latitude,
+                            lng: details.longitude,
                             context: context,
                           );
                         },
@@ -220,17 +274,17 @@ class HomePlaceCard extends StatelessWidget {
                       const SizedBox(width: 6),
                       InkWell(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => RoadmapScreen(
-                                initialDestination: RoadmapLocation(
-                                  name: place.name,
-                                  lat: place.latitude,
-                                  lng: place.longitude,
-                                ),
+                          context.push(
+                            '/roadmap',
+                            extra: {
+                              'destination': RoadmapLocation(
+                                placeId: details.placeId,
+                                name: details.name,
+                                lat: details.latitude,
+                                lng: details.longitude,
+                                formattedAddress: details.formattedAddress,
                               ),
-                            ),
+                            },
                           );
                         },
                         borderRadius: BorderRadius.circular(12),
@@ -271,6 +325,21 @@ class HomePlaceCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFallbackGradient() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: const Center(
+        child: Icon(Icons.place_rounded, size: 48, color: Colors.white70),
       ),
     );
   }

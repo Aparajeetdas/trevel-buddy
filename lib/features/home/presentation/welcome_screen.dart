@@ -117,7 +117,7 @@ class WelcomeScreen extends StatelessWidget {
                   _buildFeatureRow(
                     icon: Icons.verified_user_rounded,
                     color: AppColors.success,
-                    title: 'Verified Drivers & Businesses',
+                    title: 'Verify a Driver & Community Safety',
                     subtitle: 'Look up vehicle numbers and travel with peace of mind.',
                   ),
                 ],

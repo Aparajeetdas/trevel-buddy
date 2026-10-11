@@ -95,13 +95,13 @@ class _TravelBuddyAppState extends ConsumerState<TravelBuddyApp> {
   }
 
   void _runBackgroundStartupTasks() async {
-    // 1. Pre-warm local seed data in background (3-5s timeout)
+    // 1. Pre-warm scam zones in background (3-5s timeout)
     unawaited(
       withTimeout(
-        ref.read(appRepositoryProvider).getPlaces(),
+        ref.read(appRepositoryProvider).getScamReportZones(),
         timeout: const Duration(seconds: 4),
         fallback: [],
-        operationName: 'Preload Places',
+        operationName: 'Preload Scam Zones',
       ).then((_) {}),
     );
 

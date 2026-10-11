@@ -45,7 +45,6 @@ class GoogleMapsService {
   /// Places API (New) Autocomplete via proxy with session token, location bias, and language
   Future<List<GooglePlaceSuggestion>> autocomplete(
     String query, {
-    List<Place> seedPlaces = const [],
     LatLng? biasCenter,
     String languageCode = 'en',
     bool searchInCountryOnly = false,
@@ -150,25 +149,6 @@ class GoogleMapsService {
         throw Exception('Proxy returned status ${response.statusCode}');
       }
     } catch (e) {
-      if (seedPlaces.isNotEmpty) {
-        final queryLower = clean.toLowerCase();
-        final matches = seedPlaces
-            .where(
-              (p) =>
-                  p.name.toLowerCase().contains(queryLower) ||
-                  p.state.toLowerCase().contains(queryLower),
-            )
-            .map(
-              (p) => GooglePlaceSuggestion(
-                placeId: p.id,
-                mainText: p.name,
-                secondaryText: '${p.state}, India',
-                types: const ['tourist_attraction', 'point_of_interest'],
-              ),
-            )
-            .toList();
-        if (matches.isNotEmpty) return matches;
-      }
       rethrow;
     }
   }
@@ -322,7 +302,6 @@ class GoogleMapsService {
   /// Places API (New) Place Details via proxy with 10-minute in-memory cache
   Future<GooglePlaceDetails> getPlaceDetails(
     String placeId, {
-    Place? seedFallback,
     String? languageCode,
   }) async {
     // 1. Check in-memory 10-minute cache
@@ -335,85 +314,41 @@ class GoogleMapsService {
     }
 
     // 2. Query proxy endpoint (POST /places/details)
-    try {
-      final url = Uri.parse('$proxyBaseUrl/places/details');
-      final body = <String, dynamic>{
-        'placeId': placeId,
-        'sessionToken': _sessionToken,
-      };
-      if (languageCode != null) {
-        body['languageCode'] = languageCode;
-      }
-
-      final response = await _client
-          .post(
-            url,
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(body),
-          )
-          .timeout(const Duration(seconds: 8));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final details = _parseGooglePlaceDetailsJson(
-          data,
-          fallback: seedFallback,
-        );
-
-        _placeDetailsCache[placeId] = details;
-        resetSessionToken(); // End of autocomplete session
-        return details;
-      }
-    } catch (_) {
-      // Fall through to fallback
+    final url = Uri.parse('$proxyBaseUrl/places/details');
+    final body = <String, dynamic>{
+      'placeId': placeId,
+      'sessionToken': _sessionToken,
+    };
+    if (languageCode != null) {
+      body['languageCode'] = languageCode;
     }
 
-    // 3. Graceful Fallback using seed Place or synthesized landmark
-    final fallbackDetails = GooglePlaceDetails(
-      placeId: placeId,
-      name: seedFallback?.name ?? 'Local Landmark',
-      formattedAddress: seedFallback != null
-          ? '${seedFallback.name}, ${seedFallback.state}, India'
-          : 'Local City Center',
-      rating: seedFallback?.rating ?? 4.5,
-      userRatingCount: 320,
-      editorialSummary:
-          seedFallback?.description ??
-          'Popular destination and historical landmark.',
-      isOpenNow: true,
-      weekdayDescriptions: const ['Monday - Sunday: 9:00 AM - 6:00 PM'],
-      photoUrls: seedFallback != null
-          ? [seedFallback.coverPhoto, ...seedFallback.gallery.take(2)]
-          : const [],
-      latitude: seedFallback?.latitude ?? 26.9124,
-      longitude: seedFallback?.longitude ?? 75.7873,
-      fetchedAt: DateTime.now(),
-      isLiveGoogle: false,
-      attribution: 'Travel Buddy Local Database',
-      types: const ['point_of_interest'],
-    );
+    final response = await _client
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 8));
 
-    _placeDetailsCache[placeId] = fallbackDetails;
-    return fallbackDetails;
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final details = _parseGooglePlaceDetailsJson(data);
+
+      _placeDetailsCache[placeId] = details;
+      resetSessionToken(); // End of autocomplete session
+      return details;
+    }
+
+    throw Exception('Failed to load place details for id: $placeId (Status: ${response.statusCode})');
   }
 
-  GooglePlaceDetails _parseGooglePlaceDetailsJson(
-    Map<String, dynamic> data, {
-    Place? fallback,
-  }) {
-    final placeId =
-        data['id'] as String? ??
-        (fallback?.id ?? 'place_${DateTime.now().millisecondsSinceEpoch}');
+  GooglePlaceDetails _parseGooglePlaceDetailsJson(Map<String, dynamic> data) {
+    final placeId = data['id'] as String? ?? 'place_${DateTime.now().millisecondsSinceEpoch}';
     final loc = data['location'] as Map<String, dynamic>? ?? {};
-    final lat =
-        (loc['latitude'] as num?)?.toDouble() ??
-        (fallback?.latitude ?? 26.9124);
-    final lng =
-        (loc['longitude'] as num?)?.toDouble() ??
-        (fallback?.longitude ?? 75.7873);
-    final name =
-        (data['displayName']?['text'] as String?) ??
-        (fallback?.name ?? 'Discovered Location');
+    final lat = (loc['latitude'] as num?)?.toDouble() ?? 0.0;
+    final lng = (loc['longitude'] as num?)?.toDouble() ?? 0.0;
+    final name = (data['displayName']?['text'] as String?) ?? 'Discovered Location';
 
     final weekdayHours =
         (data['regularOpeningHours']?['weekdayDescriptions'] as List<dynamic>?)
@@ -447,20 +382,16 @@ class GoogleMapsService {
       placeId: placeId,
       name: name,
       formattedAddress:
-          data['formattedAddress'] as String? ?? (fallback?.state ?? 'India'),
-      rating: (data['rating'] as num?)?.toDouble() ?? fallback?.rating,
-      userRatingCount:
-          data['userRatingCount'] as int? ?? (fallback != null ? 150 : null),
+          data['formattedAddress'] as String? ?? 'India',
+      rating: (data['rating'] as num?)?.toDouble(),
+      userRatingCount: data['userRatingCount'] as int?,
       priceLevel: data['priceLevel'] as String?,
       phoneNumber: data['nationalPhoneNumber'] as String?,
       websiteUri: data['websiteUri'] as String?,
-      editorialSummary:
-          data['editorialSummary']?['text'] as String? ?? fallback?.description,
+      editorialSummary: data['editorialSummary']?['text'] as String?,
       isOpenNow: data['currentOpeningHours']?['openNow'] as bool?,
       weekdayDescriptions: weekdayHours,
-      photoUrls: photoUrls.isNotEmpty
-          ? photoUrls
-          : (fallback != null ? [fallback.coverPhoto] : const []),
+      photoUrls: photoUrls,
       latitude: lat,
       longitude: lng,
       fetchedAt: DateTime.now(),
@@ -552,8 +483,8 @@ class GoogleMapsService {
             'resolved_${DateTime.now().millisecondsSinceEpoch}';
         final name = data['name'] as String? ?? 'Imported Destination';
         final address = data['formattedAddress'] as String? ?? 'India';
-        final lat = (data['latitude'] as num?)?.toDouble() ?? 26.9124;
-        final lng = (data['longitude'] as num?)?.toDouble() ?? 75.7873;
+        final lat = (data['latitude'] as num?)?.toDouble() ?? 0.0;
+        final lng = (data['longitude'] as num?)?.toDouble() ?? 0.0;
         final rating = (data['rating'] as num?)?.toDouble() ?? 4.3;
         final count = data['userRatingCount'] as int? ?? 85;
 

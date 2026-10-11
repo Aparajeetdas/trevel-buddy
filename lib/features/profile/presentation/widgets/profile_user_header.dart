@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_theme.dart';
 
@@ -54,19 +53,6 @@ class ProfileUserHeaderCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: AppSpacing.md),
-            const Divider(),
-            const SizedBox(height: AppSpacing.sm),
-            // Convert to Business Account Button
-            ElevatedButton.icon(
-              onPressed: () => context.push('/business/onboarding'),
-              icon: const Icon(Icons.storefront_rounded),
-              label: const Text('Convert to Business Account'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryDark,
-                foregroundColor: Colors.white,
-              ),
             ),
           ],
         ),

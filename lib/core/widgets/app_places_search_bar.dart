@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_models.dart';
 import '../services/google_maps_service.dart';
 import '../theme/app_theme.dart';
+
+class RecentPlaceItem {
+  final String id;
+  final String name;
+
+  const RecentPlaceItem({required this.id, required this.name});
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+
+  factory RecentPlaceItem.fromJson(Map<String, dynamic> json) => RecentPlaceItem(
+    id: json['id'] as String? ?? '',
+    name: json['name'] as String? ?? '',
+  );
+}
 
 /// Shared responsive search bar with Google Places (New) autocomplete,
 /// out-of-order race protection, 250ms debounce, recent searches,
@@ -38,8 +53,8 @@ class _AppPlacesSearchBarState extends ConsumerState<AppPlacesSearchBar> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
 
-  static const String _recentSearchesKey = 'travel_buddy_recent_places_v3';
-  List<String> _recentSearches = [];
+  static const String _recentSearchesKey = 'travel_buddy_recent_places_v4';
+  List<RecentPlaceItem> _recentSearches = [];
 
   Timer? _debounceTimer;
   int _latestRequestId = 0;
@@ -117,24 +132,35 @@ class _AppPlacesSearchBarState extends ConsumerState<AppPlacesSearchBar> {
   Future<void> _loadRecents() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final list =
-          prefs.getStringList(_recentSearchesKey) ??
-          ['Jaipur', 'Goa', 'New Delhi', 'Hawa Mahal'];
-      if (mounted) setState(() => _recentSearches = list);
+      final list = prefs.getStringList(_recentSearchesKey) ?? [];
+      final parsed = list.map((item) {
+        try {
+          return RecentPlaceItem.fromJson(jsonDecode(item) as Map<String, dynamic>);
+        } catch (_) {
+          return RecentPlaceItem(id: '', name: item);
+        }
+      }).where((r) => r.name.isNotEmpty).toList();
+      if (mounted) setState(() => _recentSearches = parsed);
     } catch (_) {}
   }
 
-  Future<void> _addRecent(String query) async {
-    final clean = query.trim();
+  Future<void> _addRecent(String name, {String id = ''}) async {
+    final clean = name.trim();
     if (clean.isEmpty) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      _recentSearches.remove(clean);
-      _recentSearches.insert(0, clean);
+      _recentSearches.removeWhere(
+        (r) =>
+            r.name.toLowerCase() == clean.toLowerCase() ||
+            (id.isNotEmpty && r.id == id),
+      );
+      _recentSearches.insert(0, RecentPlaceItem(id: id, name: clean));
       if (_recentSearches.length > 8) {
         _recentSearches = _recentSearches.sublist(0, 8);
       }
-      await prefs.setStringList(_recentSearchesKey, _recentSearches);
+      final encoded =
+          _recentSearches.map((r) => jsonEncode(r.toJson())).toList();
+      await prefs.setStringList(_recentSearchesKey, encoded);
       if (mounted) setState(() {});
     } catch (_) {}
   }
@@ -357,7 +383,7 @@ class _AppPlacesSearchBarState extends ConsumerState<AppPlacesSearchBar> {
   }
 
   Future<void> _selectSuggestion(GooglePlaceSuggestion suggestion) async {
-    await _addRecent(suggestion.mainText);
+    await _addRecent(suggestion.mainText, id: suggestion.placeId);
     _focusNode.unfocus();
 
     if (suggestion.placeId.startsWith('coord_')) {
@@ -397,7 +423,7 @@ class _AppPlacesSearchBarState extends ConsumerState<AppPlacesSearchBar> {
   }
 
   void _selectDetails(GooglePlaceDetails details) {
-    _addRecent(details.name);
+    _addRecent(details.name, id: details.placeId);
     _focusNode.unfocus();
     setState(() {
       _controller.text = details.name;
@@ -459,27 +485,44 @@ class _AppPlacesSearchBarState extends ConsumerState<AppPlacesSearchBar> {
     try {
       Position? pos;
       try {
-        pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.medium,
-          ),
-        ).timeout(const Duration(seconds: 4));
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
+        if (permission == LocationPermission.whileInUse ||
+            permission == LocationPermission.always) {
+          pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.medium,
+            ),
+          ).timeout(const Duration(seconds: 5));
+        }
       } catch (geoError) {
         debugPrint('⚠️ [Location] Location timed out or unavailable: $geoError');
       }
 
-      final lat = pos?.latitude ?? 26.9124;
-      final lng = pos?.longitude ?? 75.7873;
-
       if (!mounted) return;
       setState(() => _isLoading = false);
 
+      if (pos == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not access current location. Please choose or search a city.',
+            ),
+          ),
+        );
+        return;
+      }
+
       final mapsService = ref.read(googleMapsServiceProvider);
-      final details = await mapsService.getPlaceDetails(
-        'loc_${lat.toStringAsFixed(4)}_${lng.toStringAsFixed(4)}',
-        seedFallback: null,
+      final details = await mapsService.reverseGeocode(
+        pos.latitude,
+        pos.longitude,
       );
-      widget.onPlaceSelected(details);
+      if (details != null && mounted) {
+        widget.onPlaceSelected(details);
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -987,12 +1030,27 @@ class _AppPlacesSearchBarState extends ConsumerState<AppPlacesSearchBar> {
                                 color: AppColors.primary,
                               ),
                               label: Text(
-                                rec,
+                                rec.name,
                                 style: const TextStyle(fontSize: 11),
                               ),
-                              onPressed: () {
-                                _controller.text = rec;
-                                _onSubmitted(rec);
+                              onPressed: () async {
+                                if (rec.id.isNotEmpty && !rec.id.startsWith('coord_') && !rec.id.startsWith('url_')) {
+                                  setState(() => _isLoading = true);
+                                  try {
+                                    final details = await ref
+                                        .read(googleMapsServiceProvider)
+                                        .getPlaceDetails(rec.id);
+                                    if (mounted) {
+                                      setState(() => _isLoading = false);
+                                      _selectDetails(details);
+                                      return;
+                                    }
+                                  } catch (_) {
+                                    if (mounted) setState(() => _isLoading = false);
+                                  }
+                                }
+                                _controller.text = rec.name;
+                                _onSubmitted(rec.name);
                               },
                             ),
                           );

@@ -3,8 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/airport_fares/presentation/airport_prepaid_fares_screen.dart';
 import '../../features/ask_buddy/presentation/ask_buddy_sheet.dart';
-import '../../features/business/presentation/business_onboarding_screen.dart';
-import '../../features/business/presentation/business_profile_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/explore/presentation/explore_screen.dart';
 import '../../features/place_guide/presentation/place_guide_screen.dart';
@@ -72,7 +70,7 @@ final GoRouter appRouter = GoRouter(
       parentNavigatorKey: _rootNavigatorKey,
       path: '/place/:id',
       builder: (context, state) {
-        final placeId = state.pathParameters['id'] ?? 'plc_1';
+        final placeId = state.pathParameters['id'] ?? '';
         return PlaceGuideScreen(placeId: placeId);
       },
     ),
@@ -150,38 +148,17 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       parentNavigatorKey: _rootNavigatorKey,
-      path: '/business/onboarding',
-      builder: (context, state) => const BusinessOnboardingScreen(),
-    ),
-    GoRoute(
-      parentNavigatorKey: _rootNavigatorKey,
       path: '/roadmap',
       builder: (context, state) {
         final extra = state.extra as Map<String, dynamic>?;
         final origin = extra?['origin'] as RoadmapLocation?;
-        final destination =
-            extra?['destination'] as RoadmapLocation? ??
-            const RoadmapLocation(
-              name: 'Hawa Mahal',
-              formattedAddress:
-                  'Badi Choupad, J.D.A. Market, Pink City, Jaipur',
-              lat: 26.9239,
-              lng: 75.8267,
-            );
+        final destination = extra?['destination'] as RoadmapLocation?;
         final preference = extra?['preference'] as String? ?? 'Fastest';
         return RoadmapScreen(
           initialOrigin: origin,
           initialDestination: destination,
           preference: preference,
         );
-      },
-    ),
-    GoRoute(
-      parentNavigatorKey: _rootNavigatorKey,
-      path: '/business/profile/:id',
-      builder: (context, state) {
-        final id = state.pathParameters['id'] ?? 'biz_1';
-        return BusinessProfileScreen(businessId: id);
       },
     ),
     GoRoute(

@@ -12,35 +12,6 @@ import 'package:go_router/go_router.dart';
 // Mock repository returning mock seed data immediately
 class MockResilientAppRepository implements AppDataRepository {
   @override
-  Future<List<Place>> getPlaces() async => [
-        Place.fromJson({
-          'id': 'test_place_1',
-          'name': 'Hawa Mahal',
-          'state': 'Rajasthan',
-          'category': 'Landmark',
-          'coverPhoto': 'https://example.com/photo.jpg',
-          'gallery': <String>[],
-          'rating': 4.7,
-          'reviewsCount': 1200,
-          'scamRisk': 'Moderate',
-          'bestTimeToVisit': 'October to March',
-          'latitude': 26.9239,
-          'longitude': 75.8267,
-          'description': 'Palace of Winds in Jaipur',
-          'transportOptions': <Map<String, dynamic>>[],
-          'routeWarnings': <String>[],
-          'foodVenues': <Map<String, dynamic>>[],
-          'stays': <Map<String, dynamic>>[],
-          'scamAlerts': <Map<String, dynamic>>[],
-          'reviews': <Map<String, dynamic>>[],
-          'verifiedBusinesses': <Map<String, dynamic>>[],
-        }),
-      ];
-
-  @override
-  Future<Place?> getPlaceById(String id) async => null;
-
-  @override
   Future<List<Driver>> getDrivers() async => [];
 
   @override
@@ -60,12 +31,6 @@ class MockResilientAppRepository implements AppDataRepository {
 
   @override
   Future<void> submitScamReport(ScamReport report) async {}
-
-  @override
-  Future<List<BusinessProfile>> getBusinessProfiles() async => [];
-
-  @override
-  Future<void> saveBusinessProfile(BusinessProfile profile) async {}
 
   @override
   Future<void> resetAllData() async {}
@@ -151,7 +116,6 @@ Widget createTestApp({
   return ProviderScope(
     overrides: [
       appRepositoryProvider.overrideWithValue(MockResilientAppRepository()),
-      placesFutureProvider.overrideWith((ref) => MockResilientAppRepository().getPlaces()),
       if (simulateTariffFailure)
         govTariffRepositoryProvider.overrideWithValue(MockFailingTariffRepository()),
     ],
@@ -169,7 +133,7 @@ void main() {
   });
 
   group('Web Startup Resilience Tests', () {
-    testWidgets('Home still renders when Firebase is unconfigured and proxy is offline', (tester) async {
+    testWidgets('Home renders city chooser on first visit when active city is not set', (tester) async {
       tester.view.physicalSize = const Size(390 * 2.0, 844 * 2.0);
       tester.view.devicePixelRatio = 2.0;
       addTearDown(() => tester.view.resetPhysicalSize());
@@ -179,8 +143,7 @@ void main() {
       await tester.pump(Duration.zero);
       await tester.pump(const Duration(milliseconds: 500));
 
-      expect(find.text('Featured Destinations', skipOffstage: false), findsOneWidget);
-      expect(find.text('Hawa Mahal', skipOffstage: false), findsAtLeastNWidgets(1));
+      expect(find.text('Where are you traveling?', skipOffstage: false), findsOneWidget);
     });
 
     testWidgets('Responsive Layout at 390px (Mobile)', (tester) async {

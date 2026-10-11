@@ -450,79 +450,7 @@ class Driver {
   );
 }
 
-/// Business Profile
-class BusinessProfile {
-  final String id;
-  final String businessName;
-  final String businessType; // 'Driver', 'Hotel', 'Restaurant'
-  final String ownerName;
-  final String vehicleOrRegNumber;
-  final bool isVerified;
-  final double trustScore; // e.g. 96% or 4.8
-  final int reviewsCount;
-  final List<String> services;
-  final Map<String, double> ownPrices;
-  final double? priceCap;
-  final String phone;
-  final String address;
 
-  const BusinessProfile({
-    required this.id,
-    required this.businessName,
-    required this.businessType,
-    required this.ownerName,
-    required this.vehicleOrRegNumber,
-    required this.isVerified,
-    required this.trustScore,
-    required this.reviewsCount,
-    required this.services,
-    required this.ownPrices,
-    this.priceCap,
-    required this.phone,
-    required this.address,
-  });
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'businessName': businessName,
-    'businessType': businessType,
-    'ownerName': ownerName,
-    'vehicleOrRegNumber': vehicleOrRegNumber,
-    'isVerified': isVerified,
-    'trustScore': trustScore,
-    'reviewsCount': reviewsCount,
-    'services': services,
-    'ownPrices': ownPrices,
-    'priceCap': priceCap,
-    'phone': phone,
-    'address': address,
-  };
-
-  factory BusinessProfile.fromJson(Map<String, dynamic> json) =>
-      BusinessProfile(
-        id: json['id'] as String,
-        businessName: json['businessName'] as String,
-        businessType: json['businessType'] as String,
-        ownerName: json['ownerName'] as String,
-        vehicleOrRegNumber: json['vehicleOrRegNumber'] as String,
-        isVerified: json['isVerified'] as bool? ?? true,
-        trustScore: (json['trustScore'] as num).toDouble(),
-        reviewsCount: json['reviewsCount'] as int? ?? 0,
-        services:
-            (json['services'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [],
-        ownPrices:
-            (json['ownPrices'] as Map<String, dynamic>?)?.map(
-              (k, v) => MapEntry(k, (v as num).toDouble()),
-            ) ??
-            {},
-        priceCap: (json['priceCap'] as num?)?.toDouble(),
-        phone: json['phone'] as String? ?? '+91 98765 43210',
-        address: json['address'] as String? ?? 'Local Area',
-      );
-}
 
 /// Scam Report Zone for Map Heatmap
 class ScamReportZone {
@@ -594,7 +522,6 @@ class Place {
   final List<Stay> stays;
   final List<ScamAlert> scamAlerts;
   final List<Review> reviews;
-  final List<BusinessProfile> verifiedBusinesses;
 
   const Place({
     required this.id,
@@ -616,7 +543,6 @@ class Place {
     required this.stays,
     required this.scamAlerts,
     required this.reviews,
-    required this.verifiedBusinesses,
   });
 
   Map<String, dynamic> toJson() => {
@@ -639,7 +565,6 @@ class Place {
     'stays': stays.map((e) => e.toJson()).toList(),
     'scamAlerts': scamAlerts.map((e) => e.toJson()).toList(),
     'reviews': reviews.map((e) => e.toJson()).toList(),
-    'verifiedBusinesses': verifiedBusinesses.map((e) => e.toJson()).toList(),
   };
 
   factory Place.fromJson(Map<String, dynamic> json) => Place(
@@ -688,11 +613,6 @@ class Place {
     reviews:
         (json['reviews'] as List<dynamic>?)
             ?.map((e) => Review.fromJson(e as Map<String, dynamic>))
-            .toList() ??
-        [],
-    verifiedBusinesses:
-        (json['verifiedBusinesses'] as List<dynamic>?)
-            ?.map((e) => BusinessProfile.fromJson(e as Map<String, dynamic>))
             .toList() ??
         [],
   );

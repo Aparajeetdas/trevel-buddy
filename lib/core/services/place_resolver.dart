@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/api_config.dart';
 import '../models/app_models.dart';
-import '../utils/engine_math.dart';
+
 
 /// Resolves tapped coordinates to real Google Places (New) within 40m,
 /// falling back to Geocoding reverse lookup, or local seed destinations.
@@ -23,10 +23,7 @@ class PlaceResolver {
   String _coordKey(LatLng pos) =>
       '${pos.latitude.toStringAsFixed(4)},${pos.longitude.toStringAsFixed(4)}';
 
-  Future<GooglePlaceDetails> resolveCoordinate(
-    LatLng position, {
-    List<Place> seedPlaces = const [],
-  }) async {
+  Future<GooglePlaceDetails> resolveCoordinate(LatLng position) async {
     final key = _coordKey(position);
     final cached = _cache[key];
     if (cached != null) {
@@ -54,11 +51,11 @@ class PlaceResolver {
         return geocoded;
       }
     } catch (_) {
-      // Fall through to seed fallback
+      // Fall through to GPS coordinate fallback
     }
 
-    // 3. Seed Fallback / Nearest place
-    final fallback = _nearestSeedFallback(position, seedPlaces);
+    // 3. Coordinate Pinned Point fallback
+    final fallback = _coordinateFallback(position);
     _cache[key] = fallback;
     return fallback;
   }
@@ -186,44 +183,7 @@ class PlaceResolver {
     );
   }
 
-  GooglePlaceDetails _nearestSeedFallback(
-    LatLng position,
-    List<Place> seedPlaces,
-  ) {
-    Place? nearest;
-    double minDistance = double.infinity;
-
-    for (final p in seedPlaces) {
-      final d = EngineMath.haversineDistanceKm(
-        position.latitude,
-        position.longitude,
-        p.latitude,
-        p.longitude,
-      );
-      if (d < minDistance) {
-        minDistance = d;
-        nearest = p;
-      }
-    }
-
-    if (nearest != null && minDistance <= 2.5) {
-      return GooglePlaceDetails(
-        placeId: nearest.id,
-        name: nearest.name,
-        formattedAddress: '${nearest.name}, ${nearest.state}, India',
-        rating: nearest.rating,
-        userRatingCount: nearest.reviewsCount,
-        editorialSummary: nearest.description,
-        isOpenNow: true,
-        photoUrls: [nearest.coverPhoto, ...nearest.gallery.take(2)],
-        latitude: nearest.latitude,
-        longitude: nearest.longitude,
-        fetchedAt: DateTime.now(),
-        isLiveGoogle: false,
-        attribution: 'Travel Buddy Local Database',
-      );
-    }
-
+  GooglePlaceDetails _coordinateFallback(LatLng position) {
     return GooglePlaceDetails(
       placeId:
           'loc_${position.latitude.toStringAsFixed(4)}_${position.longitude.toStringAsFixed(4)}',

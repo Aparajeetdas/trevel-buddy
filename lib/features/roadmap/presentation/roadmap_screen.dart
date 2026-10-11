@@ -5,6 +5,7 @@ import '../../../../core/models/roadmap_models.dart';
 import '../../../../core/services/roadmap_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_brand_app_bar.dart';
+import '../../../../core/widgets/empty_state.dart';
 import 'go_mode_screen.dart';
 import 'widgets/roadmap_checklist_card.dart';
 import 'widgets/roadmap_header_card.dart';
@@ -15,13 +16,13 @@ import 'widgets/roadmap_step_card.dart';
 /// Full-screen Journey Roadmap Page ("Go Here")
 class RoadmapScreen extends ConsumerStatefulWidget {
   final RoadmapLocation? initialOrigin;
-  final RoadmapLocation initialDestination;
+  final RoadmapLocation? initialDestination;
   final String preference;
 
   const RoadmapScreen({
     super.key,
     this.initialOrigin,
-    required this.initialDestination,
+    this.initialDestination,
     this.preference = 'Fastest',
   });
 
@@ -33,8 +34,8 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   late final TextEditingController _originController;
   late final TextEditingController _destController;
 
-  late RoadmapLocation _origin;
-  late RoadmapLocation _destination;
+  RoadmapLocation? _origin;
+  RoadmapLocation? _destination;
   late DateTime _departTime;
   int _travelers = 1;
   late String _preference;
@@ -42,26 +43,22 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   Roadmap? _roadmap;
   int _selectedOptionIndex = 0;
   int? _focusedStepIndex;
-  bool _isLoading = true;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _origin =
-        widget.initialOrigin ??
-        const RoadmapLocation(
-          name: 'Jaipur Junction',
-          lat: 26.9200,
-          lng: 75.7878,
-        );
+    _origin = widget.initialOrigin;
     _destination = widget.initialDestination;
     _departTime = DateTime.now();
     _preference = widget.preference;
 
-    _originController = TextEditingController(text: _origin.name);
-    _destController = TextEditingController(text: _destination.name);
+    _originController = TextEditingController(text: _origin?.name ?? '');
+    _destController = TextEditingController(text: _destination?.name ?? '');
 
-    _loadRoadmap();
+    if (_origin != null && _destination != null) {
+      _loadRoadmap();
+    }
   }
 
   @override
@@ -72,11 +69,21 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   }
 
   Future<void> _loadRoadmap() async {
+    final orig = _origin;
+    final dest = _destination;
+    if (orig == null || dest == null) {
+      setState(() {
+        _isLoading = false;
+        _roadmap = null;
+      });
+      return;
+    }
+
     setState(() => _isLoading = true);
     final service = ref.read(roadmapServiceProvider);
     final roadmap = await service.planRoadmap(
-      origin: _origin,
-      destination: _destination,
+      origin: orig,
+      destination: dest,
       departTime: _departTime,
       travelers: _travelers,
       preference: _preference,
@@ -100,15 +107,19 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
     setState(() {
       _origin = _destination;
       _destination = tempLoc;
-      _originController.text = _origin.name;
-      _destController.text = _destination.name;
+      _originController.text = _origin?.name ?? '';
+      _destController.text = _destination?.name ?? '';
     });
-    _loadRoadmap();
+    if (_origin != null && _destination != null) {
+      _loadRoadmap();
+    }
   }
 
   void _startJourney() {
     final roadmap = _roadmap;
-    if (roadmap == null || roadmap.options.isEmpty) return;
+    final orig = _origin;
+    final dest = _destination;
+    if (roadmap == null || roadmap.options.isEmpty || orig == null || dest == null) return;
     final selectedOption = roadmap
         .options[_selectedOptionIndex.clamp(0, roadmap.options.length - 1)];
 
@@ -116,8 +127,8 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
       context,
       MaterialPageRoute(
         builder: (_) => GoModeScreen(
-          origin: _origin,
-          destination: _destination,
+          origin: orig,
+          destination: dest,
           option: selectedOption,
         ),
       ),
@@ -125,21 +136,19 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
   }
 
   void _openFullRouteInMaps(RoadmapOption option) {
+    final dest = _destination;
+    if (dest == null) return;
     final waypoints = option.steps
         .take(9)
         .map((s) => '${s.endLat},${s.endLng}')
         .toList();
-    ref
-        .read(mapLauncherServiceProvider)
-        .openDirections(
-          origin: '${_origin.lat},${_origin.lng}',
-          destination: '${_destination.lat},${_destination.lng}',
-          originName: _origin.name,
-          destName: _destination.name,
+    ref.read(mapLauncherServiceProvider).openDirectionsSynchronously(
+          origin: _origin,
+          destination: dest,
+          mode: option.primaryMode,
           waypoints: waypoints.length > 1
               ? waypoints.sublist(0, waypoints.length - 1)
               : const [],
-          context: context,
         );
   }
 
@@ -154,9 +163,12 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
           )]
         : null;
 
+    final originTitle = _origin?.name.isNotEmpty == true ? _origin!.name : 'Pick Origin';
+    final destTitle = _destination?.name.isNotEmpty == true ? _destination!.name : 'Pick Destination';
+
     return Scaffold(
       appBar: AppBrandAppBar(
-        title: 'Roadmap • ${_destination.name}',
+        title: 'Roadmap • $originTitle → $destTitle',
         showBackButton: true,
         actions: [
           if (selectedOption != null)
@@ -170,7 +182,7 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
             ),
         ],
       ),
-      body: _isLoading || roadmap == null || selectedOption == null
+      body: _isLoading
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -184,40 +196,116 @@ class _RoadmapScreenState extends ConsumerState<RoadmapScreen> {
                 ],
               ),
             )
-          : ListView(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              children: [
-                // 1. From -> To Header Card
-                RoadmapHeaderCard(
-                  originController: _originController,
-                  destController: _destController,
-                  onSwap: _swapLocations,
-                  departTime: _departTime,
-                  onDepartTimeChanged: (dt) => setState(() => _departTime = dt),
-                  travelers: _travelers,
-                  onTravelersChanged: (t) => setState(() => _travelers = t),
-                  selectedPreference: _preference,
-                  onPreferenceChanged: (p) {
-                    setState(() => _preference = p);
-                    _loadRoadmap();
-                  },
-                  onRefreshRoute: _loadRoadmap,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                // Open full route in Maps button
-                ElevatedButton.icon(
-                  onPressed: () => _openFullRouteInMaps(selectedOption),
-                  icon: const Icon(Icons.map_rounded, size: 18),
-                  label: const Text(
-                    'Open Full Route in Maps',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                ),
+          : (_origin == null || _destination == null || roadmap == null || selectedOption == null)
+              ? ListView(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  children: [
+                    RoadmapHeaderCard(
+                      originController: _originController,
+                      destController: _destController,
+                      onSwap: _swapLocations,
+                      departTime: _departTime,
+                      onDepartTimeChanged: (dt) {
+                        setState(() => _departTime = dt);
+                        _loadRoadmap();
+                      },
+                      travelers: _travelers,
+                      onTravelersChanged: (t) {
+                        setState(() => _travelers = t);
+                        _loadRoadmap();
+                      },
+                      selectedPreference: _preference,
+                      onPreferenceChanged: (p) {
+                        setState(() => _preference = p);
+                        _loadRoadmap();
+                      },
+                      onRefreshRoute: _loadRoadmap,
+                      onOriginLocationSelected: (loc) {
+                        setState(() {
+                          _origin = loc;
+                          _originController.text = loc.name;
+                        });
+                        if (_origin != null && _destination != null) {
+                          _loadRoadmap();
+                        }
+                      },
+                      onDestLocationSelected: (loc) {
+                        setState(() {
+                          _destination = loc;
+                          _destController.text = loc.name;
+                        });
+                        if (_origin != null && _destination != null) {
+                          _loadRoadmap();
+                        }
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+                    const EmptyState(
+                      icon: Icons.alt_route_rounded,
+                      title: 'Choose Starting Point & Destination',
+                      message:
+                          'Select your origin and destination above to compute fair tariffs and safe route options.',
+                    ),
+                  ],
+                )
+              : ListView(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  children: [
+                    // 1. From -> To Header Card
+                    RoadmapHeaderCard(
+                      originController: _originController,
+                      destController: _destController,
+                      onSwap: _swapLocations,
+                      departTime: _departTime,
+                      onDepartTimeChanged: (dt) {
+                        setState(() => _departTime = dt);
+                        _loadRoadmap();
+                      },
+                      travelers: _travelers,
+                      onTravelersChanged: (t) {
+                        setState(() => _travelers = t);
+                        _loadRoadmap();
+                      },
+                      selectedPreference: _preference,
+                      onPreferenceChanged: (p) {
+                        setState(() => _preference = p);
+                        _loadRoadmap();
+                      },
+                      onRefreshRoute: _loadRoadmap,
+                      onOriginLocationSelected: (loc) {
+                        setState(() {
+                          _origin = loc;
+                          _originController.text = loc.name;
+                        });
+                        if (_origin != null && _destination != null) {
+                          _loadRoadmap();
+                        }
+                      },
+                      onDestLocationSelected: (loc) {
+                        setState(() {
+                          _destination = loc;
+                          _destController.text = loc.name;
+                        });
+                        if (_origin != null && _destination != null) {
+                          _loadRoadmap();
+                        }
+                      },
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    // Open full route in Maps button
+                    ElevatedButton.icon(
+                      onPressed: () => _openFullRouteInMaps(selectedOption),
+                      icon: const Icon(Icons.map_rounded, size: 18),
+                      label: const Text(
+                        'Open Full Route in Maps',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                 const SizedBox(height: AppSpacing.md),
                 // 2. Option Tabs (Cheapest, Fastest, Comfortable, Local guide)
                 RoadmapOptionTabs(

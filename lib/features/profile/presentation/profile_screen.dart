@@ -21,7 +21,7 @@ class ProfileScreen extends ConsumerWidget {
       builder: (ctx) => AlertDialog(
         title: const Text('Reset Demo Data?'),
         content: const Text(
-          'This will clear all created business accounts, submitted scam reports, and reset to the clean hackathon demo state.',
+          'This will clear all submitted scam reports, cached locations, and reset to the clean demo state.',
         ),
         actions: [
           TextButton(
@@ -39,7 +39,6 @@ class ProfileScreen extends ConsumerWidget {
 
     if (confirmed == true) {
       await ref.read(scamReportsNotifierProvider.notifier).reset();
-      await ref.read(businessProfileNotifierProvider.notifier).reset();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -101,7 +100,6 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final reportsAsync = ref.watch(scamReportsNotifierProvider);
-    final businessProfilesAsync = ref.watch(businessProfileNotifierProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -109,79 +107,18 @@ class ProfileScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(AppSpacing.md),
         children: [
-          // 1. User Header & Business Conversion CTA
+          // 1. User Header
           const ProfileUserHeaderCard(),
           const SizedBox(height: AppSpacing.lg),
 
-          // 2. Business Accounts if registered
-          businessProfilesAsync.maybeWhen(
-            data: (profiles) {
-              if (profiles.isEmpty) return const SizedBox.shrink();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'My Verified Business Profiles',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                  ...profiles.map(
-                    (p) => Card(
-                      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.verified_rounded,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        title: Text(
-                          p.businessName,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          '${p.businessType} • Trust Score ${p.trustScore}★',
-                        ),
-                        trailing: const Icon(Icons.chevron_right_rounded),
-                        onTap: () => context.push('/business/profile/${p.id}'),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                ],
-              );
-            },
-            orElse: () => const SizedBox.shrink(),
-          ),
-
-          // 3. Saved Places section
+          // 2. Saved Guides & Itineraries section
           Text(
-            'Saved Guides & Itineraries',
+            'Saved Guides & Safety Resources',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.bookmark_rounded,
-                color: AppColors.primary,
-              ),
-              title: const Text('Jaipur Pink City'),
-              subtitle: const Text('Saved for trip planning'),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => context.push('/place/plc_1'),
-            ),
-          ),
-          const SizedBox(height: AppSpacing.md),
           Card(
             child: ListTile(
               leading: const Icon(

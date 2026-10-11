@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/models/roadmap_models.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../price_checker/presentation/widgets/price_route_autocomplete_field.dart';
 
@@ -15,6 +16,8 @@ class RoadmapHeaderCard extends StatelessWidget {
   final String selectedPreference;
   final ValueChanged<String> onPreferenceChanged;
   final VoidCallback onRefreshRoute;
+  final ValueChanged<RoadmapLocation>? onOriginLocationSelected;
+  final ValueChanged<RoadmapLocation>? onDestLocationSelected;
 
   const RoadmapHeaderCard({
     super.key,
@@ -28,6 +31,8 @@ class RoadmapHeaderCard extends StatelessWidget {
     required this.selectedPreference,
     required this.onPreferenceChanged,
     required this.onRefreshRoute,
+    this.onOriginLocationSelected,
+    this.onDestLocationSelected,
   });
 
   Future<void> _pickTime(BuildContext context) async {
@@ -77,6 +82,8 @@ class RoadmapHeaderCard extends StatelessWidget {
                       label: 'Starting Point',
                       hint: 'My current location or station...',
                       icon: Icons.my_location_rounded,
+                      allowMyLocation: true,
+                      onLocationSelected: onOriginLocationSelected,
                       onPlaceSelected: (_) => onRefreshRoute(),
                     ),
                     const SizedBox(height: 6),
@@ -86,6 +93,7 @@ class RoadmapHeaderCard extends StatelessWidget {
                       hint: 'Fort, monument or hotel...',
                       icon: Icons.location_on_rounded,
                       iconColor: AppColors.danger,
+                      onLocationSelected: onDestLocationSelected,
                       onPlaceSelected: (_) => onRefreshRoute(),
                     ),
                   ],

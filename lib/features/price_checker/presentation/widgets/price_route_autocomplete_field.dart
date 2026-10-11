@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/models/app_models.dart';
+import '../../../../core/models/roadmap_models.dart';
 import '../../../../core/services/google_maps_service.dart';
 import '../../../../core/theme/app_theme.dart';
 
@@ -13,6 +14,8 @@ class PriceRouteAutocompleteField extends ConsumerStatefulWidget {
   final IconData icon;
   final Color iconColor;
   final ValueChanged<String>? onPlaceSelected;
+  final ValueChanged<RoadmapLocation>? onLocationSelected;
+  final bool allowMyLocation;
 
   const PriceRouteAutocompleteField({
     super.key,
@@ -22,6 +25,8 @@ class PriceRouteAutocompleteField extends ConsumerStatefulWidget {
     required this.icon,
     this.iconColor = AppColors.primary,
     this.onPlaceSelected,
+    this.onLocationSelected,
+    this.allowMyLocation = false,
   });
 
   @override
@@ -52,7 +57,7 @@ class _PriceRouteAutocompleteFieldState
     } catch (_) {}
   }
 
-  void _selectSuggestion(GooglePlaceSuggestion s) {
+  Future<void> _selectSuggestion(GooglePlaceSuggestion s) async {
     widget.controller.text = s.mainText;
     setState(() {
       _suggestions = [];
@@ -60,6 +65,50 @@ class _PriceRouteAutocompleteFieldState
     });
     FocusScope.of(context).unfocus();
     widget.onPlaceSelected?.call(s.mainText);
+
+    if (widget.onLocationSelected != null) {
+      try {
+        final details =
+            await ref.read(googleMapsServiceProvider).getPlaceDetails(s.placeId);
+        final loc = RoadmapLocation(
+          placeId: details.placeId,
+          name: details.name,
+          formattedAddress: details.formattedAddress,
+          lat: details.latitude,
+          lng: details.longitude,
+          isMyLocation: false,
+        );
+        widget.onLocationSelected!(loc);
+      } catch (_) {
+        widget.onLocationSelected!(
+          RoadmapLocation(
+            placeId: s.placeId,
+            name: s.mainText,
+            formattedAddress: s.secondaryText,
+            lat: 0.0,
+            lng: 0.0,
+          ),
+        );
+      }
+    }
+  }
+
+  void _selectMyLocation() {
+    widget.controller.text = 'My location';
+    setState(() {
+      _suggestions = [];
+      _showDropdown = false;
+    });
+    FocusScope.of(context).unfocus();
+    widget.onPlaceSelected?.call('My location');
+    widget.onLocationSelected?.call(
+      const RoadmapLocation(
+        name: 'My location',
+        lat: 0.0,
+        lng: 0.0,
+        isMyLocation: true,
+      ),
+    );
   }
 
   @override
@@ -115,7 +164,26 @@ class _PriceRouteAutocompleteFieldState
               ),
             ),
             child: Column(
-              children: _suggestions.map((s) {
+              children: [
+                if (widget.allowMyLocation)
+                  ListTile(
+                    dense: true,
+                    leading: const Icon(
+                      Icons.my_location_rounded,
+                      size: 18,
+                      color: AppColors.primary,
+                    ),
+                    title: const Text(
+                      'Use My Current Location',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    onTap: _selectMyLocation,
+                  ),
+                ..._suggestions.map((s) {
                 return ListTile(
                   dense: true,
                   leading: const Icon(
@@ -138,8 +206,8 @@ class _PriceRouteAutocompleteFieldState
                       : null,
                   onTap: () => _selectSuggestion(s),
                 );
-              }).toList(),
-            ),
+              }),
+            ]),
           ),
       ],
     );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../../core/models/app_models.dart';
 import '../../../../core/theme/app_theme.dart';
@@ -122,48 +121,6 @@ class PlaceReviewsAndBusinessesSection extends StatelessWidget {
             ),
           );
         }),
-        const SizedBox(height: AppSpacing.lg),
-
-        // Section 9: Verified Businesses
-        if (place.verifiedBusinesses.isNotEmpty) ...[
-          Text(
-            'Verified Local Businesses',
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          ...place.verifiedBusinesses.map((b) {
-            return Card(
-              margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-              child: ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.verified_rounded,
-                    color: AppColors.primary,
-                    size: 24,
-                  ),
-                ),
-                title: Text(
-                  b.businessName,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  '${b.businessType} • Trust Score ${b.trustScore}★ (${b.reviewsCount} reviews)',
-                  style: const TextStyle(fontSize: 12),
-                ),
-                trailing: const Icon(Icons.chevron_right_rounded),
-                onTap: () => context.push('/business/profile/${b.id}'),
-              ),
-            );
-          }),
-        ],
       ],
     );
   }

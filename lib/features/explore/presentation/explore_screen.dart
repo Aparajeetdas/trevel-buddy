@@ -6,7 +6,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/data/community_repository.dart';
-import '../../../core/data/local_data_repository.dart';
 import '../../../core/models/app_models.dart';
 import '../../../core/models/roadmap_models.dart';
 import '../../../core/services/google_maps_service.dart';
@@ -17,8 +16,23 @@ import '../../../core/widgets/app_brand_app_bar.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_places_search_bar.dart';
 import '../../../core/widgets/ask_buddy_floating_button.dart';
+import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/error_state.dart';
+import '../../../core/widgets/skeleton_loader.dart';
 import '../../roadmap/presentation/roadmap_screen.dart';
 import 'widgets/location_details_sheet.dart';
+
+final exploreCategoryPlacesProvider =
+    FutureProvider.family<List<GooglePlaceDetails>, ({String category, String city, LatLng? center})>(
+  (ref, arg) async {
+    final mapsService = ref.read(googleMapsServiceProvider);
+    return mapsService.textSearch(
+      '${arg.category} in ${arg.city}',
+      biasCenter: arg.center,
+      maxResultCount: 8,
+    );
+  },
+);
 
 /// Explore Screen: Discover places, external Google Map navigation,
 /// paste/import Google Maps short-links, and area scams & price insights.
@@ -177,7 +191,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
         child: LocationDetailsSheet(
           details: details,
           nearbyTraps: nearbyTraps,
-          userLocation: const LatLng(26.9124, 75.7873),
+          userLocation: ref.read(activeCityProvider)?.center,
           communityReportsCount: 18,
           onClose: () => Navigator.pop(context),
         ),
@@ -187,28 +201,22 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final places = ref.watch(placesFutureProvider).value ?? [];
+    final activeCity = ref.watch(activeCityProvider);
     final areaInsightsAsync = ref.watch(areaInsightsFutureProvider);
     final mapLauncher = ref.watch(mapLauncherServiceProvider);
-
     final selectedCategory = _categories[_selectedCategoryIndex];
 
-    // Filter places based on selected category with distance computation
-    final userPos = const LatLng(26.9124, 75.7873);
-    final categorizedPlaces = places.where((p) {
-      if (selectedCategory.label == 'Attractions') return true;
-      if (selectedCategory.label == 'Restaurants' ||
-          selectedCategory.label == 'Cafes') {
-        return p.category.toLowerCase().contains('food') ||
-            p.category.toLowerCase().contains('market');
-      }
-      return p.category.toLowerCase().contains(
-            selectedCategory.label.toLowerCase(),
-          ) ||
-          p.name.toLowerCase().contains(selectedCategory.label.toLowerCase());
-    }).toList();
+    final categoryPlacesAsync = activeCity != null
+        ? ref.watch(
+            exploreCategoryPlacesProvider((
+              category: selectedCategory.label,
+              city: activeCity.name,
+              center: activeCity.center,
+            )),
+          )
+        : null;
 
-    final activeCity = ref.watch(activeCityProvider);
+    final userPos = activeCity?.center ?? const LatLng(0, 0);
 
     return Scaffold(
       appBar: const AppBrandAppBar(title: 'Explore & Google Maps'),
@@ -397,252 +405,306 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> {
           ),
 
           // Category Places Cards
-          SliverPadding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final place = categorizedPlaces[index];
-                final distKm = EngineMath.haversineDistanceKm(
-                  userPos.latitude,
-                  userPos.longitude,
-                  place.latitude,
-                  place.longitude,
-                );
+          if (activeCity == null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: EmptyState(
+                  icon: Icons.location_city_rounded,
+                  title: 'Select a City to Explore',
+                  message:
+                      'Choose a city above or tap "Use my location" to discover local places and fair prices.',
+                  buttonLabel: 'Search Cities',
+                  onAction: () {},
+                ),
+              ),
+            )
+          else if (categoryPlacesAsync != null)
+            categoryPlacesAsync.when(
+              loading: () => const SliverToBoxAdapter(
+                child: Padding(
+                  padding: EdgeInsets.all(AppSpacing.md),
+                  child: SkeletonLoader(count: 3),
+                ),
+              ),
+              error: (err, _) => SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  child: ErrorState(
+                    message: 'We could not load places right now.',
+                    onRetry: () => ref.invalidate(
+                      exploreCategoryPlacesProvider((
+                        category: selectedCategory.label,
+                        city: activeCity.name,
+                        center: activeCity.center,
+                      )),
+                    ),
+                  ),
+                ),
+              ),
+              data: (places) {
+                if (places.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: EmptyState(
+                        icon: Icons.search_off_rounded,
+                        title: 'No places found',
+                        message:
+                            'No ${selectedCategory.label} found in ${activeCity.name}. Try another category or search above.',
+                      ),
+                    ),
+                  );
+                }
 
-                return Container(
-                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-                  child: AppCard(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        GestureDetector(
-                          onTap: () {
-                            _openLocationDetailsModal(
-                              GooglePlaceDetails(
-                                placeId: place.id,
-                                name: place.name,
-                                formattedAddress:
-                                    '${place.name}, ${place.state}, India',
-                                rating: place.rating,
-                                userRatingCount: place.reviewsCount,
-                                priceLevel: selectedCategory.priceLevel,
-                                isOpenNow: true,
-                                editorialSummary: place.description,
-                                photoUrls: [place.coverPhoto],
-                                latitude: place.latitude,
-                                longitude: place.longitude,
-                                fetchedAt: DateTime.now(),
-                                isLiveGoogle: false,
-                                attribution: 'Travel Buddy Database',
-                              ),
-                            );
-                          },
-                          child: Row(
+                return SliverPadding(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final place = places[index];
+                      final distKm = EngineMath.haversineDistanceKm(
+                        userPos.latitude,
+                        userPos.longitude,
+                        place.latitude,
+                        place.longitude,
+                      );
+                      final photoUrl = place.photoUrls.isNotEmpty
+                          ? place.photoUrls.first
+                          : null;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+                        child: AppCard(
+                          padding: const EdgeInsets.all(AppSpacing.md),
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  place.coverPhoto,
-                                  width: 68,
-                                  height: 68,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      Container(
-                                        width: 68,
-                                        height: 68,
-                                        color: Colors.grey.shade300,
-                                        child: const Icon(
-                                          Icons.place_rounded,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
-                                ),
-                              ),
-                              const SizedBox(width: AppSpacing.sm),
-                              Expanded(
-                                child: Column(
+                              GestureDetector(
+                                onTap: () => _openLocationDetailsModal(place),
+                                child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            place.name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 15,
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: photoUrl != null
+                                          ? Image.network(
+                                              photoUrl,
+                                              width: 68,
+                                              height: 68,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, _, _) =>
+                                                  Container(
+                                                width: 68,
+                                                height: 68,
+                                                color: Colors.grey.shade300,
+                                                child: const Icon(
+                                                  Icons.place_rounded,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            )
+                                          : Container(
+                                              width: 68,
+                                              height: 68,
+                                              color: Colors.grey.shade300,
+                                              child: const Icon(
+                                                Icons.place_rounded,
+                                                color: Colors.grey,
+                                              ),
                                             ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  place.name,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              if (place.isOpenNow == true)
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                    horizontal: 4,
+                                                    vertical: 2,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.green
+                                                        .withOpacity(0.12),
+                                                    borderRadius:
+                                                        BorderRadius.circular(4),
+                                                  ),
+                                                  child: const Text(
+                                                    'Open now',
+                                                    style: TextStyle(
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.green,
+                                                    ),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                          Text(
+                                            '${place.formattedAddress} • ${distKm.toStringAsFixed(1)} km away',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: Colors.grey,
+                                            ),
+                                            maxLines: 1,
                                             overflow: TextOverflow.ellipsis,
                                           ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
-                                            vertical: 2,
+                                          const SizedBox(height: 3),
+                                          Row(
+                                            children: [
+                                              if (place.rating != null) ...[
+                                                const Icon(
+                                                  Icons.star_rounded,
+                                                  color: Colors.amber,
+                                                  size: 14,
+                                                ),
+                                                const SizedBox(width: 2),
+                                                Text(
+                                                  '${place.rating} (${place.userRatingCount ?? 0})',
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 11,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                              ],
+                                              Text(
+                                                selectedCategory.priceLevel,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w800,
+                                                  fontSize: 11,
+                                                  color: Colors.teal,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.withOpacity(
-                                              0.12,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                          child: const Text(
-                                            'Open now',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      '${place.state}, India • ${distKm.toStringAsFixed(1)} km away',
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey,
+                                        ],
                                       ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Row(
-                                      children: [
-                                        const Icon(
-                                          Icons.star_rounded,
-                                          color: Colors.amber,
-                                          size: 14,
-                                        ),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          '${place.rating} (${place.reviewsCount})',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          selectedCategory.priceLevel,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 11,
-                                            color: Colors.teal,
-                                          ),
-                                        ),
-                                      ],
                                     ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: AppSpacing.sm),
-                        // 3 Buttons: Open in Maps, Go here, Check a price
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  mapLauncher.openPlace(
-                                    placeId: place.id,
-                                    name: '${place.name}, ${place.state}',
-                                    lat: place.latitude,
-                                    lng: place.longitude,
-                                    context: context,
-                                  );
-                                },
-                                icon: const Icon(Icons.map_rounded, size: 14),
-                                label: const Text(
-                                  'Open in Maps',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => RoadmapScreen(
-                                        initialDestination: RoadmapLocation(
+                              const SizedBox(height: AppSpacing.sm),
+                              // 3 Buttons: Open in Maps, Go here, Check a price
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        mapLauncher.openPlace(
+                                          placeId: place.placeId,
                                           name: place.name,
                                           lat: place.latitude,
                                           lng: place.longitude,
-                                          formattedAddress:
-                                              '${place.name}, ${place.state}',
+                                          context: context,
+                                        );
+                                      },
+                                      icon: const Icon(Icons.map_rounded, size: 14),
+                                      label: const Text(
+                                        'Open in Maps',
+                                        style: TextStyle(fontSize: 11),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
                                         ),
                                       ),
                                     ),
-                                  );
-                                },
-                                icon: const Icon(
-                                  Icons.directions_rounded,
-                                  size: 14,
-                                ),
-                                label: const Text(
-                                  'Go here',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
                                   ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => RoadmapScreen(
+                                              initialDestination: RoadmapLocation(
+                                                placeId: place.placeId,
+                                                name: place.name,
+                                                lat: place.latitude,
+                                                lng: place.longitude,
+                                                formattedAddress:
+                                                    place.formattedAddress,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.directions_rounded,
+                                        size: 14,
+                                      ),
+                                      label: const Text(
+                                        'Go here',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: () {
+                                        context.push(
+                                          '/check-price',
+                                          extra: place.name,
+                                        );
+                                      },
+                                      icon: const Icon(
+                                        Icons.speed_rounded,
+                                        size: 14,
+                                        color: AppColors.primary,
+                                      ),
+                                      label: const Text(
+                                        'Check price',
+                                        style: TextStyle(fontSize: 11),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 8,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  context.push(
-                                    '/check-price',
-                                    extra: place.name,
-                                  );
-                                },
-                                icon: const Icon(
-                                  Icons.speed_rounded,
-                                  size: 14,
-                                  color: AppColors.primary,
-                                ),
-                                label: const Text(
-                                  'Check price',
-                                  style: TextStyle(fontSize: 11),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 8,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ],
-                    ),
+                      );
+                    }, childCount: places.length),
                   ),
                 );
-              }, childCount: categorizedPlaces.length),
+              },
             ),
-          ),
 
           // ==========================================
           // 3. IMPORT FROM GOOGLE MAPS CARD
